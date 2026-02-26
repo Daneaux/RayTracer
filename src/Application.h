@@ -1,0 +1,37 @@
+#pragma once
+
+#include "DXDevice.h"
+#include "Window.h"
+#include "SwapChainTarget.h"
+#include "Camera.h"
+#include "InputManager.h"
+#include "Scene.h"
+#include "renderer/IRenderer.h"
+#include <memory>
+#include <Windows.h>
+
+class Application {
+public:
+    bool Initialize(HINSTANCE hInst);
+    void Tick();
+    void Shutdown();
+    void OnWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    bool IsRunning() const;
+
+private:
+    std::unique_ptr<DXDevice>        m_device;
+    std::unique_ptr<Window>          m_window1;
+    std::unique_ptr<Window>          m_window2;
+    std::unique_ptr<SwapChainTarget> m_target1;
+    std::unique_ptr<SwapChainTarget> m_target2;
+    std::unique_ptr<IRenderer>       m_renderer;
+    std::unique_ptr<Camera>          m_staticCamera;
+    std::unique_ptr<FlyCamera>       m_flyCamera;
+    InputManager                     m_input;
+    Scene                            m_scene;
+
+    LARGE_INTEGER m_frequency = {};
+    LARGE_INTEGER m_lastTime = {};
+    float         m_deltaTime = 0.0f;
+    float         m_fovY = 0.7854f; // 45 degrees
+};
