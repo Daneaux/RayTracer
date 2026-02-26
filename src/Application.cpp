@@ -1,10 +1,11 @@
 #include "Application.h"
 
-#ifdef USE_SOFTWARE_RENDERER
+//#ifdef USE_SOFTWARE_RENDERER
     #include "renderer/SoftwareRenderer.h"
-#else
+//#else
     #include "renderer/GPURenderer.h"
-#endif
+#include <renderer/RenderFactory.h>
+//#endif
 
 bool Application::Initialize(HINSTANCE hInst) {
     // Timing
@@ -62,11 +63,10 @@ bool Application::Initialize(HINSTANCE hInst) {
     m_flyCamera->UpdateMatrices();
 
     // Renderer
-    #ifdef USE_SOFTWARE_RENDERER
-        m_renderer = std::make_unique<SoftwareRenderer>();
-    #else
-        m_renderer = std::make_unique<GPURenderer>();
-    #endif
+    //#ifdef USE_SOFTWARE_RENDERER
+
+    //#endif
+		m_renderer = RendererFactory::CreateRenderer(RendererType::Software);
 
     if (!m_renderer->Initialize(*m_device, m_window1->GetWidth(), m_window1->GetHeight())) {
         OutputDebugStringA("Failed to initialize renderer\n");

@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\main.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\Application.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\Window.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\DXDevice.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\SwapChainTarget.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\Camera.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\InputManager.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\Scene.cpp" />
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\renderer\FullscreenQuad.cpp" />
+    <ClCompile Include="src\renderer\SoftwareRenderer.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\renderer\GPURenderer.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Danny\source\rayTrace2\src\math\MathTypes.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderer\RenderFactory.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Danny\source\rayTrace2\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{2838e881-95c7-4055-9283-37b27fcd2c1a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{bba5295c-ac7a-4257-b969-6e28a3b46872}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="renderer\RendererFactor.h" />
+  </ItemGroup>
+</Project>
