@@ -51,16 +51,16 @@ bool Application::Initialize(HINSTANCE hInst) {
         return false;
     }
 
-    // Cameras
-    m_staticCamera = std::make_unique<Camera>();
-    m_staticCamera->LookAt({0, 0, -5}, {0, 0, 0}, {0, 1, 0});
+    // Cameras - both windows get independent fly cameras
+    m_camera1 = std::make_unique<FlyCamera>();
     float aspect1 = (float)m_window1->GetWidth() / (float)m_window1->GetHeight();
-    m_staticCamera->SetPerspective(m_fovY, aspect1, 0.1f, 100.0f);
+    m_camera1->SetPerspective(m_fovY, aspect1, 0.1f, 100.0f);
+    m_camera1->UpdateMatrices();
 
-    m_flyCamera = std::make_unique<FlyCamera>();
+    m_camera2 = std::make_unique<FlyCamera>();
     float aspect2 = (float)m_window2->GetWidth() / (float)m_window2->GetHeight();
-    m_flyCamera->SetPerspective(m_fovY, aspect2, 0.1f, 100.0f);
-    m_flyCamera->UpdateMatrices();
+    m_camera2->SetPerspective(m_fovY, aspect2, 0.1f, 100.0f);
+    m_camera2->UpdateMatrices();
 
     // Renderer
     //#ifdef USE_SOFTWARE_RENDERER
@@ -84,11 +84,16 @@ void Application::Tick() {
     m_lastTime = now;
     if (m_deltaTime > 0.1f) m_deltaTime = 0.1f; // cap to prevent huge jumps
 
-    // Update fly camera
-    if (m_input.IsCaptured()) {
-        m_flyCamera->Update(&m_input, m_deltaTime);
+    // Update cameras - each window has its own input and camera
+    if (m_input1.IsCaptured()) {
+        m_camera1->Update(&m_input1, m_deltaTime);
     }
-    m_input.ResetFrameDeltas();
+    m_input1.ResetFrameDeltas();
+
+    if (m_input2.IsCaptured()) {
+        m_camera2->Update(&m_input2, m_deltaTime);
+    }
+    m_input2.ResetFrameDeltas();
 
     // Handle window 1 resize
     if (m_window1->ConsumeResizeFlag()) {
@@ -98,14 +103,13 @@ void Application::Tick() {
             m_target1->Resize(*m_device, w, h);
             m_renderer->OnResize(*m_device, w, h);
             float aspect = (float)w / (float)h;
-            m_staticCamera->SetPerspective(m_fovY, aspect, 0.1f, 100.0f);
-            m_staticCamera->UpdateMatrices();
+            m_camera1->SetPerspective(m_fovY, aspect, 0.1f, 100.0f);
         }
     }
 
     // Render window 1
     if (m_window1->GetWidth() > 0 && m_window1->GetHeight() > 0) {
-        m_renderer->Render(*m_device, m_scene, *m_staticCamera, *m_target1);
+        m_renderer->Render(*m_device, m_scene, *m_camera1, *m_target1);
         m_target1->Present();
     }
 
@@ -116,21 +120,20 @@ void Application::Tick() {
         if (w > 0 && h > 0) {
             m_target2->Resize(*m_device, w, h);
             float aspect = (float)w / (float)h;
-            m_flyCamera->SetPerspective(m_fovY, aspect, 0.1f, 100.0f);
+            m_camera2->SetPerspective(m_fovY, aspect, 0.1f, 100.0f);
         }
     }
 
     // Render window 2
     if (m_window2->GetWidth() > 0 && m_window2->GetHeight() > 0) {
-        m_renderer->Render(*m_device, m_scene, *m_flyCamera, *m_target2);
+        m_renderer->Render(*m_device, m_scene, *m_camera2, *m_target2);
         m_target2->Present();
     }
 }
 
 void Application::Shutdown() {
-    if (m_input.IsCaptured()) {
-        m_input.ReleaseCapture();
-    }
+    m_input1.ReleaseCapture();
+    m_input2.ReleaseCapture();
     m_renderer.reset();
     m_target2.reset();
     m_target1.reset();
@@ -144,33 +147,42 @@ bool Application::IsRunning() const {
 }
 
 void Application::OnWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    // Route input to the correct per-window InputManager
+    InputManager* input = nullptr;
+    if (hwnd == m_window1->GetHWND()) input = &m_input1;
+    else if (hwnd == m_window2->GetHWND()) input = &m_input2;
+    if (!input) return;
+
     switch (msg) {
     case WM_KEYDOWN:
         if (wParam == VK_ESCAPE) {
-            m_input.ReleaseCapture();
+            input->ReleaseCapture();
         } else {
-            m_input.OnKeyDown(wParam);
+            input->OnKeyDown(wParam);
         }
         break;
 
     case WM_KEYUP:
-        m_input.OnKeyUp(wParam);
+        input->OnKeyUp(wParam);
         break;
 
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
-        // Capture mouse on click in window 2
-        if (hwnd == m_window2->GetHWND() && !m_input.IsCaptured()) {
-            m_input.SetCapture(hwnd);
+        if (!input->IsCaptured()) {
+            input->SetCapture(hwnd);
         }
         break;
 
     case WM_MOUSEMOVE:
-        if (m_input.IsCaptured()) {
+        if (input->IsCaptured()) {
             POINT pt;
             GetCursorPos(&pt);
-            m_input.OnRawMouseMove(pt.x, pt.y);
+            input->OnRawMouseMove(pt.x, pt.y);
         }
+        break;
+
+    case WM_MOUSEWHEEL:
+        input->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));
         break;
     }
 }

@@ -72,5 +72,12 @@ void FlyCamera::Update(const InputManager* input, float dt) {
     if (input->IsKeyDown(VK_SPACE)) m_position += up * speed;
     if (input->IsKeyDown(VK_SHIFT)) m_position -= up * speed;
 
+    // Scroll wheel moves forward/backward
+    int wheelDelta = input->GetMouseWheelDelta();
+    if (wheelDelta != 0) {
+        float scrollSpeed = 2.0f;
+        m_position += m_forward * (wheelDelta / 120.0f) * scrollSpeed;
+    }
+
     UpdateMatrices();
 }

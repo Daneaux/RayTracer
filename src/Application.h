@@ -25,9 +25,10 @@ private:
     std::unique_ptr<SwapChainTarget> m_target1;
     std::unique_ptr<SwapChainTarget> m_target2;
     std::unique_ptr<IRenderer>       m_renderer;
-    std::unique_ptr<Camera>          m_staticCamera;
-    std::unique_ptr<FlyCamera>       m_flyCamera;
-    InputManager                     m_input;
+    std::unique_ptr<FlyCamera>       m_camera1;
+    std::unique_ptr<FlyCamera>       m_camera2;
+    InputManager                     m_input1;
+    InputManager                     m_input2;
     Scene                            m_scene;
 
     LARGE_INTEGER m_frequency = {};

@@ -37,6 +37,28 @@ void SoftwareRenderer::Render(DXDevice& device, const Scene& scene,
 
     for (uint32_t py = 0; py < h; ++py) {
         for (uint32_t px = 0; px < w; ++px) {
+            // ============================================================
+            // INNER LOOP: This runs once per pixel (px, py).
+            // To paint a pixel, write an ABGR uint32_t to:
+            //     m_pixelBuffer[py * w + px]
+            // Format: (A << 24) | (B << 16) | (G << 8) | R
+            //
+            // --- SAMPLE: paint a pixel directly ---
+            // Example 1: Solid red pixel
+            //   m_pixelBuffer[py * w + px] = 0xFF0000FF; // A=FF B=00 G=00 R=FF
+            //
+            // Example 2: XOR checkerboard pattern
+            //   uint8_t xor_val = (uint8_t)((px ^ py) & 0xFF);
+            //   m_pixelBuffer[py * w + px] = (255u << 24) | (xor_val << 16) | (xor_val << 8) | xor_val;
+            //
+            // Example 3: Animated concentric circles (using a frame counter)
+            //   float cx = (float)px - w * 0.5f;
+            //   float cy = (float)py - h * 0.5f;
+            //   float dist = std::sqrt(cx * cx + cy * cy);
+            //   uint8_t ring = (uint8_t)((int)(dist * 0.1f) & 1 ? 255 : 0);
+            //   m_pixelBuffer[py * w + px] = (255u << 24) | (ring << 8); // green rings
+            // ============================================================
+
             float ndcX = (2.0f * (px + 0.5f) / w) - 1.0f;
             float ndcY = 1.0f - (2.0f * (py + 0.5f) / h);
 

@@ -84,6 +84,7 @@ LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
     case WM_MOUSEMOVE:
+    case WM_MOUSEWHEEL:
         if (self->m_app) {
             self->m_app->OnWindowMessage(hwnd, msg, wParam, lParam);
         }

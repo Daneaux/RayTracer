@@ -22,9 +22,14 @@ public:
         m_mouseDeltaY += dy;
     }
 
+    void OnMouseWheel(int delta) {
+        m_mouseWheelDelta += delta;
+    }
+
     void ResetFrameDeltas() {
         m_mouseDeltaX = 0;
         m_mouseDeltaY = 0;
+        m_mouseWheelDelta = 0;
     }
 
     bool IsKeyDown(int key) const {
@@ -33,6 +38,7 @@ public:
 
     int GetMouseDeltaX() const { return m_mouseDeltaX; }
     int GetMouseDeltaY() const { return m_mouseDeltaY; }
+    int GetMouseWheelDelta() const { return m_mouseWheelDelta; }
 
     void SetCapture(HWND hwnd) {
         ::SetCapture(hwnd);
@@ -81,6 +87,7 @@ private:
     bool m_keys[256] = {};
     int  m_mouseDeltaX = 0;
     int  m_mouseDeltaY = 0;
+    int  m_mouseWheelDelta = 0;
     bool m_captured = false;
     HWND m_captureHwnd = nullptr;
     int  m_lastCursorX = 0;
