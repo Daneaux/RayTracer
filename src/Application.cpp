@@ -62,14 +62,17 @@ bool Application::Initialize(HINSTANCE hInst) {
     m_camera2->SetPerspective(m_fovY, aspect2, 0.1f, 100.0f);
     m_camera2->UpdateMatrices();
 
-    // Renderer
-    //#ifdef USE_SOFTWARE_RENDERER
-
-    //#endif
-		m_renderer = RendererFactory::CreateRenderer(RendererType::Software);
-
+    // Window 1 renderer (software ray tracer)
+    m_renderer = RendererFactory::CreateRenderer(RendererType::Software);
     if (!m_renderer->Initialize(*m_device, m_window1->GetWidth(), m_window1->GetHeight())) {
         OutputDebugStringA("Failed to initialize renderer\n");
+        return false;
+    }
+
+    // Window 2 renderer (software scene overview)
+    m_overviewRenderer = std::make_unique<SoftwareOverviewRenderer>();
+    if (!m_overviewRenderer->Initialize(*m_device, m_window2->GetWidth(), m_window2->GetHeight())) {
+        OutputDebugStringA("Failed to initialize overview renderer\n");
         return false;
     }
 
@@ -88,11 +91,15 @@ void Application::Tick() {
     if (m_input1.IsCaptured()) {
         m_camera1->Update(&m_input1, m_deltaTime);
     }
+    m_camera1->ApplyKeyboard(&m_input1, m_deltaTime);
+    m_camera1->ApplyMouseWheel(&m_input1);
     m_input1.ResetFrameDeltas();
 
     if (m_input2.IsCaptured()) {
         m_camera2->Update(&m_input2, m_deltaTime);
     }
+    m_camera2->ApplyKeyboard(&m_input2, m_deltaTime);
+    m_camera2->ApplyMouseWheel(&m_input2);
     m_input2.ResetFrameDeltas();
 
     // Handle window 1 resize
@@ -119,14 +126,16 @@ void Application::Tick() {
         uint32_t h = m_window2->GetHeight();
         if (w > 0 && h > 0) {
             m_target2->Resize(*m_device, w, h);
+            m_overviewRenderer->OnResize(*m_device, w, h);
             float aspect = (float)w / (float)h;
             m_camera2->SetPerspective(m_fovY, aspect, 0.1f, 100.0f);
         }
     }
 
-    // Render window 2
+    // Render window 2 (scene overview showing camera1's frustum)
     if (m_window2->GetWidth() > 0 && m_window2->GetHeight() > 0) {
-        m_renderer->Render(*m_device, m_scene, *m_camera2, *m_target2);
+        m_overviewRenderer->SetObservedCamera(m_camera1.get());
+        m_overviewRenderer->Render(*m_device, m_scene, *m_camera2, *m_target2);
         m_target2->Present();
     }
 }
@@ -134,6 +143,7 @@ void Application::Tick() {
 void Application::Shutdown() {
     m_input1.ReleaseCapture();
     m_input2.ReleaseCapture();
+    m_overviewRenderer.reset();
     m_renderer.reset();
     m_target2.reset();
     m_target1.reset();
@@ -166,11 +176,27 @@ void Application::OnWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
         input->OnKeyUp(wParam);
         break;
 
+    case WM_MBUTTONDOWN:
+        if (!input->IsCaptured()) {
+            input->SetCapture(hwnd, InputManager::Middle);
+        }
+        break;
+
     case WM_LBUTTONDOWN:
+        if (!input->IsCaptured()) {
+            input->SetCapture(hwnd, InputManager::Left);
+        }
+        break;
     case WM_RBUTTONDOWN:
         if (!input->IsCaptured()) {
-            input->SetCapture(hwnd);
+            input->SetCapture(hwnd, InputManager::Right);
         }
+        break;
+
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONUP:
+		input->ReleaseCapture();
         break;
 
     case WM_MOUSEMOVE:

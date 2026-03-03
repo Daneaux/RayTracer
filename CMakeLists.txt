@@ -17,6 +17,8 @@ set(COMMON_SOURCES
     src/renderer/FullscreenQuad.cpp
     src/renderer/GPURenderer.cpp
     src/renderer/SoftwareRenderer.cpp
+    src/renderer/SceneOverviewRenderer.cpp
+    src/renderer/SoftwareOverviewRenderer.cpp
     src/renderer/RenderFactory.cpp
 )
 

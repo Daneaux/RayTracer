@@ -82,7 +82,11 @@ LRESULT CALLBACK Window::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
     case WM_KEYDOWN:
     case WM_KEYUP:
     case WM_LBUTTONDOWN:
+    case WM_LBUTTONUP:
     case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONUP:
     case WM_MOUSEMOVE:
     case WM_MOUSEWHEEL:
         if (self->m_app) {

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake -S . -B build -G \"Visual Studio 17 2022\" -A x64)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe\" --version)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe\" --version)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe\" --version)",
+      "Bash(CMAKE=\"/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe\")",
+      "Bash(\"$CMAKE\" -S . -B build -G \"Visual Studio 17 2022\" -A x64)",
+      "Bash(\"$CMAKE\" --build /c/Users/Danny/source/RT2/build --config Debug)"
+    ]
+  }
+}

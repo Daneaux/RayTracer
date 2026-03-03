@@ -18,8 +18,11 @@ public:
     Mat4 GetViewProjection() const { return m_view * m_projection; }
     const Vec3& GetPosition() const { return m_position; }
     const Vec3& GetForward() const { return m_forward; }
+    const Vec3& GetUp() const { return m_up; }
     float GetFovY() const { return m_fovY; }
     float GetAspectRatio() const { return m_aspectRatio; }
+    float GetNearZ() const { return m_nearZ; }
+    float GetFarZ() const { return m_farZ; }
 
     void GenerateRay(float ndcX, float ndcY, Vec3& outOrigin, Vec3& outDir) const;
 
@@ -39,10 +42,17 @@ class FlyCamera : public Camera {
 public:
     FlyCamera();
     void Update(const InputManager* input, float deltaTime);
+    void ApplyKeyboard(const InputManager* input, float deltaTime);
+    void ApplyMouseWheel(const InputManager* input);
+
+    void SetOrbitTarget(const Vec3& target) { m_orbitTarget = target; }
+    const Vec3& GetOrbitTarget() const { return m_orbitTarget; }
 
 private:
     float m_yaw = 0.0f;
     float m_pitch = 0.0f;
     float m_moveSpeed = 5.0f;
     float m_lookSensitivity = 0.003f;
+    float m_orbitSensitivity = 0.005f;
+    Vec3  m_orbitTarget = {0, 0, 0};
 };

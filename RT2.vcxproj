@@ -393,6 +393,8 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\Danny\source\RT2\src\renderer\GPURenderer.cpp" />
     <ClCompile Include="src\renderer\RenderFactory.cpp" />
     <ClCompile Include="src\renderer\SoftwareRenderer.cpp" />
+    <ClCompile Include="src\renderer\SceneOverviewRenderer.cpp" />
+    <ClCompile Include="src\renderer\SoftwareOverviewRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="renderer\RendererFactor.h" />
