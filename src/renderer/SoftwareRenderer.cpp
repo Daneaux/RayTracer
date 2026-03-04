@@ -4,6 +4,7 @@
 #include "SwapChainTarget.h"
 #include <cmath>
 #include <algorithm>
+#include "../../Object.h"
 
 bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
     m_bufWidth = width;
@@ -84,7 +85,40 @@ void SoftwareRenderer::Render(DXDevice& device, const Scene& scene,
     m_quad->Draw(device);
 }
 
-Vec3 SoftwareRenderer::TraceRay(const Vec3& origin, const Vec3& direction,
+Vec3 SoftwareRenderer::TraceRay(
+    const Vec3& origin,
+    const Vec3& direction,
+    const Scene& scene,
+    float screenU,
+    float screenV) const {
+
+    Material material;
+    material.diffuseColor = scene.sphere.color;
+    material.specularReflection = scene.sphere.specularPower;
+
+    Mat4 worldTransform = Mat4::Identity();
+    //worldTransform = worldTransform.Translation(Vec3(2, 2, 2));
+
+    SphereObject sphere(scene.sphere.radius, worldTransform, material);
+
+    Vec3 outA, normalA, outB, normalB;
+
+    if (sphere.IsHitByRay(Ray3(origin, direction), outA, normalA, outB, normalB))
+    {
+        return ComputePhongLighting(
+            outA, 
+            normalA, 
+            (origin - outA).Normalized(),
+            scene.sphere, 
+            scene.light, 
+            scene.ambientColor);
+    }
+
+    // Per-pixel gradient background: R = x/width, G = y/height, B = 0.5
+    return Vec3(screenU, screenV, 0.5f);
+}
+
+Vec3 SoftwareRenderer::TraceRay_orig(const Vec3& origin, const Vec3& direction,
                                  const Scene& scene,
                                  float screenU, float screenV) const {
     float t;

@@ -20,6 +20,10 @@ public:
 private:
     Vec3 TraceRay(const Vec3& origin, const Vec3& direction, const Scene& scene,
                   float screenU, float screenV) const;
+
+    Vec3 TraceRay_orig(const Vec3& origin, const Vec3& direction, const Scene& scene,
+        float screenU, float screenV) const;
+
     bool IntersectSphere(const Vec3& origin, const Vec3& dir,
                          const Sphere& sphere, float& t) const;
     Vec3 ComputePhongLighting(const Vec3& hitPoint, const Vec3& normal,
