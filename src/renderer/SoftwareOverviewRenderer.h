@@ -18,7 +18,7 @@ public:
     void OnResize(DXDevice& device, uint32_t width, uint32_t height) override;
     void Render(
         DXDevice& device, 
-        const Scene& scene,                
+        Scene& scene,                
         const Camera& camera, 
         SwapChainTarget& target) override;
 

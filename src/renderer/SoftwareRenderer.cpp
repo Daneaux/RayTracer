@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include "Object.h"
+#include <cassert>
 
 bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
     m_bufWidth = width;
@@ -22,7 +23,7 @@ void SoftwareRenderer::OnResize(DXDevice& device, uint32_t width, uint32_t heigh
     (void)height;
 }
 
-void SoftwareRenderer::Render(DXDevice& device, const Scene& scene,
+void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
                                const Camera& camera, SwapChainTarget& target) {
     uint32_t w = target.GetWidth();
     uint32_t h = target.GetHeight();
@@ -86,75 +87,90 @@ void SoftwareRenderer::Render(DXDevice& device, const Scene& scene,
 }
 
 Vec3 SoftwareRenderer::TraceRay(
-    const Vec3& origin,
-    const Vec3& direction,
-    const Scene& scene,
+    Vec3& origin,
+    Vec3& direction,
+    Scene& scene,
     float screenU,
-    float screenV) const {
+    float screenV)
+{
+    std::vector<Vec3> colors;
+    Vec3 outHit, normalA, outB, normalB;
 
-    // Build matrices
-    WorldObject& sphereObj = *scene.GetObjects()[0];
-    const SphereObject& sphere = dynamic_cast<SphereObject&>(sphereObj);
-    const Material& mat = sphere.GetMaterial();
+    // 
+	// 1. Find closest hit object
+    // 
+    WorldObject* obj = FindClosestHit(origin, direction, scene, outHit, normalA);
+    if(obj == nullptr) {
+        // No hit: return background color (gradient based on screen coords for now)
+        // later: use scene background.
+        return Vec3(screenU, screenV, 0.5f);
+	}
 
-    Light* l = scene.GetLights()[0];
-    PointLight& light = dynamic_cast<PointLight&>(*l);
+    //
+	// 2. Cast shadow rays to determine lighting contribution at hit point
+	// bug: if we cast N rays to N lights in here and average to 1 color, then later get M more colors from reflection/refraction and average again, 
+    // then the final color will be (N+M) averaged contributions instead of N from direct lighting and M from reflection/refraction. To fix this, we could either:
+	//  a) separate direct lighting contribution from reflection/refraction contributions and average separately, or
+	// b) for simplicity, we can just cast shadow rays once per hit point and use that same lighting contribution for all reflection/refraction rays spawned from that hit point.
+    // TODO: return array of colors.
+    CastShadowRays(origin, outHit, scene, colors);
 
-    Mat4 worldTransform = Mat4::Identity();
-    //worldTransform = worldTransform.Translation(Vec3(2, 2, 2));
+    // 
+	// 3. Cast more rays: reflection, refraction, etc.
+    // 
+
+    //const Material& mat = obj->GetMaterial();
+    // For simplicity, we only consider the first light in the scene
+    //Light* l = scene.GetLights()[0];
+    //PointLight& light = dynamic_cast<PointLight&>(*l);
+    //Vec3 color = ComputePhongLighting(
+    //    outHit,
+    //    normalA,
+    //    (origin - outHit).Normalized(),
+    //    dynamic_cast<SphereObject&>(*obj),
+    //    light,
+    //    scene.GetAmbientColor());
 
 
-    Vec3 outA, normalA, outB, normalB;
-
-    if (sphere.IsHitByRay(Ray3(origin, direction), outA, normalA, outB, normalB))
-    {
-        return ComputePhongLighting(
-            outA, 
-            normalA, 
-            (origin - outA).Normalized(),
-            sphere, 
-            light, 
-            scene.GetAmbientColor());
+    //
+    // Average contributions 
+    // 
+    Vec3 finalColor = {0, 0, 0};
+	float colorScale = 1.0f / (float)colors.size();
+    for (const Vec3& c : colors) {
+        finalColor += c;
     }
+    finalColor = finalColor * colorScale;
+	return finalColor;
 
-    // Per-pixel gradient background: R = x/width, G = y/height, B = 0.5
-    return Vec3(screenU, screenV, 0.5f);
 }
 
-//Vec3 SoftwareRenderer::TraceRay_orig(const Vec3& origin, const Vec3& direction,
-//                                 const Scene& scene,
-//                                 float screenU, float screenV) const {
-//    float t;
-//    if (IntersectSphere(origin, direction, scene.sphere, t)) {
-//        Vec3 hitPoint = origin + direction * t;
-//        Vec3 normal = (hitPoint - scene.sphere.center) * (1.0f / scene.sphere.radius);
-//        Vec3 viewDir = (origin - hitPoint).Normalized();
-//        return ComputePhongLighting(hitPoint, normal, viewDir,
-//                                     scene.sphere, scene.light, scene.ambientColor);
-//    }
-//
-//    // Per-pixel gradient background: R = x/width, G = y/height, B = 0.5
-//    return Vec3(screenU, screenV, 0.5f);
-//}
-
-//bool SoftwareRenderer::IntersectSphere(const Vec3& origin, const Vec3& dir,
-//                                        const SphereObject& sphere, float& t) const {
-//    Vec3 L = origin - sphere.center;
-//    float a = Vec3::Dot(dir, dir);
-//    float b = 2.0f * Vec3::Dot(dir, L);
-//    float c = Vec3::Dot(L, L) - sphere.radius * sphere.radius;
-//    float discriminant = b * b - 4.0f * a * c;
-//
-//    if (discriminant < 0) return false;
-//
-//    float sqrtD = std::sqrt(discriminant);
-//    float t0 = (-b - sqrtD) / (2.0f * a);
-//    float t1 = (-b + sqrtD) / (2.0f * a);
-//
-//    if (t0 > 0.001f) { t = t0; return true; }
-//    if (t1 > 0.001f) { t = t1; return true; }
-//    return false;
-//}
+WorldObject * SoftwareRenderer::FindClosestHit(
+    const Vec3& origin, 
+    const Vec3& direction, 
+    const Scene& scene,
+    Vec3& outHitPoint, 
+    Vec3& outNormal) const
+{
+    WorldObject* closestObj = nullptr;
+    Ray3 ray(origin, direction);
+    float closestT = std::numeric_limits<float>::max();
+    for (auto* obj : scene.GetObjects()) {
+        float t;
+        Vec3 hitPointA, normalA, hitPointB, normalB;
+        if (obj->IsHitByRay(ray, hitPointA, t, normalA, hitPointB, normalB)) {
+            float t2 = (hitPointA - origin).Length();
+			assert(std::abs(t - t2) < 0.01f); // sanity check that t matches hit point distance
+            if (t < closestT) {
+                closestT = t;
+                closestObj = obj;
+                outHitPoint = hitPointA;
+                outNormal = normalA;
+            }
+        }
+    }
+    return closestObj;
+}
 
 Vec3 SoftwareRenderer::ComputePhongLighting(
     const Vec3& hitPoint, 
@@ -180,4 +196,28 @@ Vec3 SoftwareRenderer::ComputePhongLighting(
         ambientTerm.y + diffuseTerm.y + specularTerm.y,
         ambientTerm.z + diffuseTerm.z + specularTerm.z
     };
+}
+
+
+// casts rays from hit point to all lights to determine if in shadow and how much light contributes. For simplicity, we return a single color multiplier for all lights (1.0 = fully lit, 0.0 = in shadow).
+void SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<Vec3>& colors)
+{
+    for (Light* light : scene.GetLights()) {
+        Vec3 toLight = light->position - hitPoint;
+        float distToLight = toLight.Length();
+        Vec3 shadowRayDir = toLight; // does this need to be normalized?
+        // Check if shadow ray is occluded by any object
+        Vec3 tempHit, tempNormal;
+        WorldObject* occluder = FindClosestHit(hitPoint, shadowRayDir, scene, tempHit, tempNormal);
+        if(occluder != nullptr) {
+            // sanity check that occluder is between hit point and light
+            assert((tempHit - hitPoint).Length() < distToLight + 0.01f);
+		} else {
+			Vec3 toOrigin = (origin - hitPoint).Normalized();
+			Vec3 toLight = toLight.Normalized();
+			float nDotL = std::max(Vec3::Dot(toOrigin, toLight), 0.0f);
+
+            colors.push_back(light->color * nDotL); 
+		}
+    }
 }

@@ -127,8 +127,12 @@ void SceneOverviewRenderer::DrawMesh(ID3D11DeviceContext* ctx, ID3D11Buffer* vb,
     ctx->DrawIndexed(indexCount, 0, 0);
 }
 
-void SceneOverviewRenderer::Render(DXDevice& device, const Scene& scene,
-                                    const Camera& camera, SwapChainTarget& target) {
+void SceneOverviewRenderer::Render(
+    DXDevice& device, 
+    Scene& scene,
+    const Camera& camera, 
+    SwapChainTarget& target)
+{
     auto* ctx = device.GetContext();
 
     float clearColor[4] = {0.05f, 0.05f, 0.08f, 1.0f};

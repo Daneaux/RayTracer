@@ -21,11 +21,8 @@ class WorldObject {
 	public:
 	WorldObject() = default;
 	WorldObject(
-		//std::unique_ptr<Object> baseObject, 
 		const Mat4& worldTransform, 
-		const Material& material)
-		: //baseObject(std::move(baseObject)), 
-		material(material)
+		const Material& material) :	material(material)
 	{
 		SetWorldTransform(worldTransform);
 	}
@@ -38,11 +35,9 @@ class WorldObject {
 	}
 	const Material& GetMaterial() const { return material; }
 
-	// Make IsHitByRay const
-	virtual bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) const = 0;
+	virtual bool IsHitByRay(const Ray3& ray, Vec3& outA, float& outT, Vec3& normalA, Vec3& outB, Vec3& normalB) const = 0;
 
 protected:
-	//std::unique_ptr<Object> baseObject;
 	Mat4 worldTransform;
 	Material material;
 	Mat4 inverseWorldTransform;
@@ -62,7 +57,7 @@ public:
 	float GetRadius() const { return radius; }
 
 	// Make IsHitByRay const
-	bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
+	bool IsHitByRay(const Ray3& ray, Vec3& outA, float& outT, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
 		Ray3 objectRay = {
 			inverseWorldTransform.Transform(Vec4(ray.origin, 1.0f)).ToVec3Drop(),
 			inverseWorldTransform.Transform(Vec4(ray.direction, 0.0f)).ToVec3Drop().Normalized()
@@ -97,6 +92,8 @@ public:
 			if (t1 < 0.001f || t2 < 0.001f) return false;
 			if (t2 < t1) std::swap(t1, t2); // ensure t1 is closer hit
 
+			outT = t1; // return closer hit t
+
 			// Get intersection point in object space then xfrom to world space
 			Vec3 hitPointA = objectRay.origin + objectRay.direction * t1;
 			Vec3 hitPointB = objectRay.origin + objectRay.direction * t2;
@@ -130,7 +127,7 @@ public:
 	{
 	}
 
-	bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
+	bool IsHitByRay(const Ray3& ray, Vec3& outA, float& outT, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
 		Ray3 objectRay = {
 			inverseWorldTransform.Transform(Vec4(ray.origin, 1.0f)).ToVec3Drop(),
 			inverseWorldTransform.Transform(Vec4(ray.direction, 0.0f)).ToVec3Drop().Normalized()
@@ -154,6 +151,7 @@ public:
 		Vec3 hitPoint = objectRay.origin + objectRay.direction * t;
 		if (std::fabs(hitPoint.x) > width * 0.5f || std::fabs(hitPoint.y) > height * 0.5f) return false; // hit point is outside quad bounds
 
+		outT = t;
 		outA = worldTransform.Transform(Vec4(hitPoint, 0.0f)).ToVec3Drop();
 		normalA = worldTransform.Transform(Vec4(planeNormal, 0.0f)).ToVec3Drop().Normalized();
 

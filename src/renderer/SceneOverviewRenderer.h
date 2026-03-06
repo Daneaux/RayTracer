@@ -19,7 +19,7 @@ class SceneOverviewRenderer : public IRenderer {
 public:
     bool Initialize(DXDevice& device, uint32_t width, uint32_t height) override;
     void OnResize(DXDevice& device, uint32_t width, uint32_t height) override;
-    void Render(DXDevice& device, const Scene& scene,
+    void Render(DXDevice& device, Scene& scene,
                 const Camera& camera, SwapChainTarget& target) override;
 
     void SetObservedCamera(const Camera* cam) { m_observedCamera = cam; }

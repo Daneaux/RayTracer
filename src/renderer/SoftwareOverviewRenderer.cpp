@@ -248,7 +248,7 @@ void SoftwareOverviewRenderer::DrawFrustum(const Camera& cam, const Mat4& vp) {
 
 void SoftwareOverviewRenderer::Render(
     DXDevice& device, 
-    const Scene& scene,
+    Scene& scene,
     const Camera& camera, 
     SwapChainTarget& target) 
 {
