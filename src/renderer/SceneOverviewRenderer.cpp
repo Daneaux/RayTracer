@@ -148,15 +148,23 @@ void SceneOverviewRenderer::Render(DXDevice& device, const Scene& scene,
 
     Mat4 vp = camera.GetViewProjection();
 
+    // temp: get one sphere
+    WorldObject& sphereObj = *scene.GetObjects()[0];
+    const SphereObject& sphere = dynamic_cast<SphereObject&>(sphereObj);
+    const Material& mat = sphere.GetMaterial();
+
+    Light* l = scene.GetLights()[0];
+    PointLight& light = dynamic_cast<PointLight&>(*l);
+
     // 1. Draw grid (world space, identity world)
     DrawMesh(ctx, m_gridVB.Get(), m_gridIB.Get(), m_gridIndexCount, vp);
 
     // 2. Draw scene sphere wireframe
-    Mat4 sphereWorld = Mat4::Scaling(scene.sphere.radius) * Mat4::Translation(scene.sphere.center);
+    Mat4 sphereWorld = Mat4::Scaling(sphere.GetRadius());// *Mat4::Translation(scene.sphere.center);
     DrawMesh(ctx, m_sphereVB.Get(), m_sphereIB.Get(), m_sphereIndexCount, sphereWorld * vp);
 
     // 3. Draw light indicator
-    Mat4 lightWorld = Mat4::Scaling(0.15f) * Mat4::Translation(scene.light.position);
+    Mat4 lightWorld = Mat4::Scaling(0.15f) * Mat4::Translation(light.position);
     DrawMesh(ctx, m_lightVB.Get(), m_lightIB.Get(), m_lightIndexCount, lightWorld * vp);
 
     // 4. Draw camera frustum (if observed camera is set)

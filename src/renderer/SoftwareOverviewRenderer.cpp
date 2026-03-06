@@ -145,17 +145,22 @@ void SoftwareOverviewRenderer::DrawGrid(const Mat4& vp) {
     DrawLine3D({0, 0, -axisLen}, {0, 0, axisLen}, {0.2f, 0.2f, 1.0f, 1.0f}, vp); // Z blue
 }
 
-void SoftwareOverviewRenderer::DrawSphereWireframe(const Sphere& sphere, const Mat4& vp) {
+void SoftwareOverviewRenderer::DrawSphereWireframe(
+    const SphereObject& sphere, 
+    const Mat4& vp) 
+{
     const uint32_t slices = 16;
     const uint32_t stacks = 8;
-    Vec4 color = {sphere.color.x, sphere.color.y, sphere.color.z, 1.0f};
+	Material mat = sphere.GetMaterial();
+    Vec4 color = {mat.diffuseColor, 1.0f};
 
     auto vtx = [&](uint32_t i, uint32_t j) -> Vec3 {
         float phi   = PI * (float)i / (float)stacks;
         float theta = 2.0f * PI * (float)j / (float)slices;
         float sp = std::sin(phi), cp = std::cos(phi);
         Vec3 local = {sp * std::cos(theta), cp, sp * std::sin(theta)};
-        return sphere.center + local * sphere.radius;
+       // return sphere.center + local * sphere.radius;
+        return local * sphere.GetRadius();
     };
 
     // Horizontal rings
@@ -169,7 +174,7 @@ void SoftwareOverviewRenderer::DrawSphereWireframe(const Sphere& sphere, const M
             DrawLine3D(vtx(i, j), vtx(i + 1, j), color, vp);
 }
 
-void SoftwareOverviewRenderer::DrawLightIndicator(const PointLight& light, const Mat4& vp) {
+void SoftwareOverviewRenderer::DrawLightIndicator(PointLight& light, const Mat4& vp) {
     Vec4 color = {1.0f, 1.0f, 0.0f, 1.0f};
     float s = 0.15f;
     Vec3 p = light.position;
@@ -241,8 +246,12 @@ void SoftwareOverviewRenderer::DrawFrustum(const Camera& cam, const Mat4& vp) {
 // Main render
 // ---------------------------------------------------------------
 
-void SoftwareOverviewRenderer::Render(DXDevice& device, const Scene& scene,
-                                       const Camera& camera, SwapChainTarget& target) {
+void SoftwareOverviewRenderer::Render(
+    DXDevice& device, 
+    const Scene& scene,
+    const Camera& camera, 
+    SwapChainTarget& target) 
+{
     uint32_t w = target.GetWidth();
     uint32_t h = target.GetHeight();
     if (w == 0 || h == 0) return;
@@ -258,11 +267,19 @@ void SoftwareOverviewRenderer::Render(DXDevice& device, const Scene& scene,
     uint32_t clearCol = ColorToABGR({0.05f, 0.05f, 0.08f, 1.0f});
     std::fill(m_pixelBuffer.begin(), m_pixelBuffer.end(), clearCol);
 
+    WorldObject& sphereObj = *scene.GetObjects()[0];
+    const SphereObject& sphere = dynamic_cast<SphereObject&>(sphereObj);
+    const Material& mat = sphere.GetMaterial();
+
+    Light* l = scene.GetLights()[0];
+    PointLight& light = dynamic_cast<PointLight&>(*l);
+
+
     Mat4 vp = camera.GetViewProjection();
 
     DrawGrid(vp);
-    DrawSphereWireframe(scene.sphere, vp);
-    DrawLightIndicator(scene.light, vp);
+    DrawSphereWireframe(sphere, vp);
+    DrawLightIndicator(light, vp);
     if (m_observedCamera) {
         DrawFrustum(*m_observedCamera, vp);
     }

@@ -13,6 +13,9 @@ set(COMMON_SOURCES
     src/Camera.cpp
     src/InputManager.cpp
     src/Scene.cpp
+    src/Lights.cpp
+    src/Material.cpp
+    src/Object.cpp
     src/math/MathTypes.cpp
     src/renderer/FullscreenQuad.cpp
     src/renderer/GPURenderer.cpp

@@ -5,6 +5,8 @@
 #include <d3dcompiler.h>
 #include <cmath>
 #include <cstring>
+#include "../lights.h"
+
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -147,8 +149,12 @@ void GPURenderer::OnResize(DXDevice& device, uint32_t width, uint32_t height) {
     (void)height;
 }
 
-void GPURenderer::Render(DXDevice& device, const Scene& scene,
-                          const Camera& camera, SwapChainTarget& target) {
+void GPURenderer::Render(
+    DXDevice& device, 
+    const Scene& scene,
+    const Camera& camera, 
+    SwapChainTarget& target)
+{
     auto* ctx = device.GetContext();
 
     float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -165,7 +171,17 @@ void GPURenderer::Render(DXDevice& device, const Scene& scene,
 
     // --- Sphere pass ---
     // Build matrices
-    Mat4 world = Mat4::Scaling(scene.sphere.radius) * Mat4::Translation(scene.sphere.center);
+    WorldObject* sphereObj = scene.GetObjects()[0];
+    SphereObject* sphere = dynamic_cast<SphereObject*>(sphereObj);
+    if (!sphere) {
+        // Handle error: object is not a SphereObject
+        return;
+    }
+
+	Light* l = scene.GetLights()[0];
+	PointLight& light = dynamic_cast<PointLight&>(*l);
+
+    Mat4 world = Mat4::Scaling(sphere->GetRadius()); //* Mat4::Translation(sphere.center);
     Mat4 vp = camera.GetViewProjection();
     Mat4 wvp = world * vp;
     Mat4 wit = world.Inverted().Transposed();
@@ -186,11 +202,12 @@ void GPURenderer::Render(DXDevice& device, const Scene& scene,
         D3D11_MAPPED_SUBRESOURCE mapped;
         ctx->Map(m_cbPerFrame.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         CBPerFrame* cb = (CBPerFrame*)mapped.pData;
-        cb->lightPosition = Vec4(scene.light.position, 0.0f);
-        cb->lightColor = Vec4(scene.light.color, scene.light.intensity);
+        cb->lightPosition = Vec4(light.position, 0.0f);
+        cb->lightColor = Vec4(light.color, light.intensity);
         cb->cameraPosition = Vec4(camera.GetPosition(), 0.0f);
-        cb->ambientColor = Vec4(scene.ambientColor, 0.0f);
-        cb->sphereColor = Vec4(scene.sphere.color, scene.sphere.specularPower);
+        cb->ambientColor = Vec4(scene.GetAmbientColor(), 0.0f);
+		const Material& mat = sphere->GetMaterial();
+        cb->sphereColor = Vec4(mat.diffuseColor, mat.specularReflection);
         ctx->Unmap(m_cbPerFrame.Get(), 0);
     }
 

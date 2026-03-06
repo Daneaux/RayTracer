@@ -4,7 +4,7 @@
 #include "SwapChainTarget.h"
 #include <cmath>
 #include <algorithm>
-#include "../../Object.h"
+#include "Object.h"
 
 bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
     m_bufWidth = width;
@@ -92,14 +92,17 @@ Vec3 SoftwareRenderer::TraceRay(
     float screenU,
     float screenV) const {
 
-    Material material;
-    material.diffuseColor = scene.sphere.color;
-    material.specularReflection = scene.sphere.specularPower;
+    // Build matrices
+    WorldObject& sphereObj = *scene.GetObjects()[0];
+    const SphereObject& sphere = dynamic_cast<SphereObject&>(sphereObj);
+    const Material& mat = sphere.GetMaterial();
+
+    Light* l = scene.GetLights()[0];
+    PointLight& light = dynamic_cast<PointLight&>(*l);
 
     Mat4 worldTransform = Mat4::Identity();
     //worldTransform = worldTransform.Translation(Vec3(2, 2, 2));
 
-    SphereObject sphere(scene.sphere.radius, worldTransform, material);
 
     Vec3 outA, normalA, outB, normalB;
 
@@ -109,62 +112,67 @@ Vec3 SoftwareRenderer::TraceRay(
             outA, 
             normalA, 
             (origin - outA).Normalized(),
-            scene.sphere, 
-            scene.light, 
-            scene.ambientColor);
+            sphere, 
+            light, 
+            scene.GetAmbientColor());
     }
 
     // Per-pixel gradient background: R = x/width, G = y/height, B = 0.5
     return Vec3(screenU, screenV, 0.5f);
 }
 
-Vec3 SoftwareRenderer::TraceRay_orig(const Vec3& origin, const Vec3& direction,
-                                 const Scene& scene,
-                                 float screenU, float screenV) const {
-    float t;
-    if (IntersectSphere(origin, direction, scene.sphere, t)) {
-        Vec3 hitPoint = origin + direction * t;
-        Vec3 normal = (hitPoint - scene.sphere.center) * (1.0f / scene.sphere.radius);
-        Vec3 viewDir = (origin - hitPoint).Normalized();
-        return ComputePhongLighting(hitPoint, normal, viewDir,
-                                     scene.sphere, scene.light, scene.ambientColor);
-    }
+//Vec3 SoftwareRenderer::TraceRay_orig(const Vec3& origin, const Vec3& direction,
+//                                 const Scene& scene,
+//                                 float screenU, float screenV) const {
+//    float t;
+//    if (IntersectSphere(origin, direction, scene.sphere, t)) {
+//        Vec3 hitPoint = origin + direction * t;
+//        Vec3 normal = (hitPoint - scene.sphere.center) * (1.0f / scene.sphere.radius);
+//        Vec3 viewDir = (origin - hitPoint).Normalized();
+//        return ComputePhongLighting(hitPoint, normal, viewDir,
+//                                     scene.sphere, scene.light, scene.ambientColor);
+//    }
+//
+//    // Per-pixel gradient background: R = x/width, G = y/height, B = 0.5
+//    return Vec3(screenU, screenV, 0.5f);
+//}
 
-    // Per-pixel gradient background: R = x/width, G = y/height, B = 0.5
-    return Vec3(screenU, screenV, 0.5f);
-}
+//bool SoftwareRenderer::IntersectSphere(const Vec3& origin, const Vec3& dir,
+//                                        const SphereObject& sphere, float& t) const {
+//    Vec3 L = origin - sphere.center;
+//    float a = Vec3::Dot(dir, dir);
+//    float b = 2.0f * Vec3::Dot(dir, L);
+//    float c = Vec3::Dot(L, L) - sphere.radius * sphere.radius;
+//    float discriminant = b * b - 4.0f * a * c;
+//
+//    if (discriminant < 0) return false;
+//
+//    float sqrtD = std::sqrt(discriminant);
+//    float t0 = (-b - sqrtD) / (2.0f * a);
+//    float t1 = (-b + sqrtD) / (2.0f * a);
+//
+//    if (t0 > 0.001f) { t = t0; return true; }
+//    if (t1 > 0.001f) { t = t1; return true; }
+//    return false;
+//}
 
-bool SoftwareRenderer::IntersectSphere(const Vec3& origin, const Vec3& dir,
-                                        const Sphere& sphere, float& t) const {
-    Vec3 L = origin - sphere.center;
-    float a = Vec3::Dot(dir, dir);
-    float b = 2.0f * Vec3::Dot(dir, L);
-    float c = Vec3::Dot(L, L) - sphere.radius * sphere.radius;
-    float discriminant = b * b - 4.0f * a * c;
-
-    if (discriminant < 0) return false;
-
-    float sqrtD = std::sqrt(discriminant);
-    float t0 = (-b - sqrtD) / (2.0f * a);
-    float t1 = (-b + sqrtD) / (2.0f * a);
-
-    if (t0 > 0.001f) { t = t0; return true; }
-    if (t1 > 0.001f) { t = t1; return true; }
-    return false;
-}
-
-Vec3 SoftwareRenderer::ComputePhongLighting(const Vec3& hitPoint, const Vec3& normal,
-                                             const Vec3& viewDir, const Sphere& sphere,
-                                             const PointLight& light,
-                                             const Vec3& ambient) const {
+Vec3 SoftwareRenderer::ComputePhongLighting(
+    const Vec3& hitPoint, 
+    const Vec3& normal,                                             
+    const Vec3& viewDir, 
+    const SphereObject& sphere,                                            
+    const PointLight& light,
+    const Vec3& ambient) const 
+{
+	Material mat = sphere.GetMaterial();
     Vec3 L = (light.position - hitPoint).Normalized();
     Vec3 H = (L + viewDir).Normalized();
 
     float diff = std::max(Vec3::Dot(normal, L), 0.0f);
-    float spec = std::pow(std::max(Vec3::Dot(normal, H), 0.0f), sphere.specularPower);
+    float spec = std::pow(std::max(Vec3::Dot(normal, H), 0.0f), mat.specularReflection);
 
-    Vec3 ambientTerm = ambient * sphere.color;
-    Vec3 diffuseTerm = sphere.color * light.color * (diff * light.intensity);
+    Vec3 ambientTerm = ambient * mat.diffuseColor;
+    Vec3 diffuseTerm = mat.diffuseColor * light.color * (diff * light.intensity);
     Vec3 specularTerm = light.color * (spec * light.intensity);
 
     return {

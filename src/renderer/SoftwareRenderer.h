@@ -6,9 +6,11 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include "Object.h"
+#include "Scene.h"
+#include "Camera.h"
+#include "Lights.h"
 
-struct Sphere;
-struct PointLight;
 
 class SoftwareRenderer : public IRenderer {
 public:
@@ -24,10 +26,14 @@ private:
     Vec3 TraceRay_orig(const Vec3& origin, const Vec3& direction, const Scene& scene,
         float screenU, float screenV) const;
 
-    bool IntersectSphere(const Vec3& origin, const Vec3& dir,
-                         const Sphere& sphere, float& t) const;
+    bool IntersectSphere(
+        const Vec3& origin, 
+        const Vec3& dir,
+        const SphereObject& sphere, 
+        float& t) const;
+
     Vec3 ComputePhongLighting(const Vec3& hitPoint, const Vec3& normal,
-                              const Vec3& viewDir, const Sphere& sphere,
+                              const Vec3& viewDir, const SphereObject& sphere,
                               const PointLight& light, const Vec3& ambient) const;
 
     std::vector<uint32_t>           m_pixelBuffer;

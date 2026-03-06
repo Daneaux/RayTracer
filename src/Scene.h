@@ -1,35 +1,32 @@
 #pragma once
 
+#include "Lights.h"
+#include <vector>
 #include "math/MathTypes.h"
+#include "Camera.h"
+#include "Object.h"
 
-struct Sphere {
-    Vec3  center = {0, 0, 0};
-    float radius = 1.0f;
-    Vec3  color = {0.8f, 0.2f, 0.2f};
-    float specularPower = 64.0f;
-};
+class Light;
 
-struct PointLight {
-    Vec3  position = {2.0f, 3.0f, -2.0f};
-    Vec3  color = {1.0f, 1.0f, 1.0f};
-    float intensity = 1.0f;
-};
+class Scene {
+public:
+    Scene()
+    { }
 
-struct Scene {
-    Sphere     sphere;
-    PointLight light;
-    Vec3       ambientColor = {0.1f, 0.1f, 0.1f};
-
-    void SetupDefault() {
-        sphere.center = {0, 0, 0};
-        sphere.radius = 1.0f;
-        sphere.color = {0.8f, 0.2f, 0.2f};
-        sphere.specularPower = 64.0f;
-
-        light.position = {2.0f, 3.0f, -2.0f};
-        light.color = {1.0f, 1.0f, 1.0f};
-        light.intensity = 1.0f;
-
-        ambientColor = {0.1f, 0.1f, 0.1f};
+    void AddObject(WorldObject* obj) {
+        objects.push_back(obj);
     }
+
+    void AddLight(Light* light) {
+        lights.push_back(light);
+    }
+
+    const std::vector<WorldObject*>& GetObjects() const { return objects; }
+    const std::vector<Light*>& GetLights() const { return lights; }
+    const Vec3& GetAmbientColor() const { return ambientColor; }
+
+private:
+    std::vector<WorldObject*> objects;
+    std::vector<Light*>       lights;
+    Vec3       ambientColor = {0.1f, 0.1f, 0.1f};
 };

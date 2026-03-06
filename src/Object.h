@@ -36,11 +36,10 @@ class WorldObject {
 		worldTransform = value;
 		inverseWorldTransform = worldTransform.Inverted();
 	}
+	const Material& GetMaterial() const { return material; }
 
-	//bool IsRenderable() const { return baseObject->IsRenderable(); }
-
-	// Returns true if ray hits the object, and outputs hit points in world space.
-	virtual bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) = 0;
+	// Make IsHitByRay const
+	virtual bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) const = 0;
 
 protected:
 	//std::unique_ptr<Object> baseObject;
@@ -60,7 +59,10 @@ public:
 	{
 	}
 
-	bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) override {
+	float GetRadius() const { return radius; }
+
+	// Make IsHitByRay const
+	bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
 		Ray3 objectRay = {
 			inverseWorldTransform.Transform(Vec4(ray.origin, 1.0f)).ToVec3Drop(),
 			inverseWorldTransform.Transform(Vec4(ray.direction, 0.0f)).ToVec3Drop().Normalized()
@@ -128,7 +130,7 @@ public:
 	{
 	}
 
-	bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) override {
+	bool IsHitByRay(const Ray3& ray, Vec3& outA, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
 		Ray3 objectRay = {
 			inverseWorldTransform.Transform(Vec4(ray.origin, 1.0f)).ToVec3Drop(),
 			inverseWorldTransform.Transform(Vec4(ray.direction, 0.0f)).ToVec3Drop().Normalized()

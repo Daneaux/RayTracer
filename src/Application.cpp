@@ -1,19 +1,14 @@
 #include "Application.h"
+#include "renderer/SoftwareRenderer.h"
+#include "renderer/GPURenderer.h"
+#include "renderer/RenderFactory.h"
 
-//#ifdef USE_SOFTWARE_RENDERER
-    #include "renderer/SoftwareRenderer.h"
-//#else
-    #include "renderer/GPURenderer.h"
-#include <renderer/RenderFactory.h>
-//#endif
 
 bool Application::Initialize(HINSTANCE hInst) {
     // Timing
     QueryPerformanceFrequency(&m_frequency);
     QueryPerformanceCounter(&m_lastTime);
-
-    // Scene
-    m_scene.SetupDefault();
+    SetupScene();
 
     // D3D11 device
     m_device = std::make_unique<DXDevice>();
@@ -79,6 +74,22 @@ bool Application::Initialize(HINSTANCE hInst) {
     return true;
 }
 
+void Application::SetupScene()
+{
+	m_scene = std::make_unique<Scene>();
+
+    // Add a sphere
+    Material redMat;
+    redMat.diffuseColor = { 1.0f, 0.0f, 0.0f };
+    redMat.specularReflection = 0.5f;
+    WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Identity(), redMat);
+    m_scene->AddObject(sphereObj);
+
+    // Add a light
+    Light* light = new PointLight({ 5.0f, 5.0f, 5.0f }, { 1.0f, 1.0f, 1.0f }, 1.0f);
+    m_scene->AddLight(light);
+}
+
 void Application::Tick() {
     // Delta time
     LARGE_INTEGER now;
@@ -116,7 +127,7 @@ void Application::Tick() {
 
     // Render window 1
     if (m_window1->GetWidth() > 0 && m_window1->GetHeight() > 0) {
-        m_renderer->Render(*m_device, m_scene, *m_camera1, *m_target1);
+        m_renderer->Render(*m_device, *m_scene.get(), *m_camera1, *m_target1);
         m_target1->Present();
     }
 
@@ -135,7 +146,7 @@ void Application::Tick() {
     // Render window 2 (scene overview showing camera1's frustum)
     if (m_window2->GetWidth() > 0 && m_window2->GetHeight() > 0) {
         m_overviewRenderer->SetObservedCamera(m_camera1.get());
-        m_overviewRenderer->Render(*m_device, m_scene, *m_camera2, *m_target2);
+        m_overviewRenderer->Render(*m_device, *m_scene, *m_camera2, *m_target2);
         m_target2->Present();
     }
 }

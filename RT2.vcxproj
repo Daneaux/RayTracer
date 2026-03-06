@@ -391,17 +391,19 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\Danny\source\RT2\src\math\MathTypes.cpp" />
     <ClCompile Include="C:\Users\Danny\source\RT2\src\renderer\FullscreenQuad.cpp" />
     <ClCompile Include="C:\Users\Danny\source\RT2\src\renderer\GPURenderer.cpp" />
-    <ClCompile Include="Material.cpp" />
-    <ClCompile Include="Object.cpp" />
+    <ClCompile Include="src\Lights.cpp" />
+    <ClCompile Include="src\Material.cpp" />
+    <ClCompile Include="src\Object.cpp" />
     <ClCompile Include="src\renderer\RenderFactory.cpp" />
     <ClCompile Include="src\renderer\SoftwareRenderer.cpp" />
     <ClCompile Include="src\renderer\SceneOverviewRenderer.cpp" />
     <ClCompile Include="src\renderer\SoftwareOverviewRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Material.h" />
-    <ClInclude Include="Object.h" />
     <ClInclude Include="renderer\RendererFactor.h" />
+    <ClInclude Include="src\Lights.h" />
+    <ClInclude Include="src\Material.h" />
+    <ClInclude Include="src\Object.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

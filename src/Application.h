@@ -12,6 +12,8 @@
 #include <memory>
 #include <Windows.h>
 
+class SoftwareOverviewRenderer;
+
 class Application {
 public:
     bool Initialize(HINSTANCE hInst);
@@ -21,6 +23,9 @@ public:
     bool IsRunning() const;
 
 private:
+
+	void SetupScene();
+
     std::unique_ptr<DXDevice>               m_device;
     std::unique_ptr<Window>                 m_window1;
     std::unique_ptr<Window>                 m_window2;
@@ -32,7 +37,7 @@ private:
     std::unique_ptr<FlyCamera>              m_camera2;
     InputManager                            m_input1;
     InputManager                            m_input2;
-    Scene                                   m_scene;
+    std::unique_ptr<Scene>                  m_scene;
 
     LARGE_INTEGER m_frequency = {};
     LARGE_INTEGER m_lastTime = {};
