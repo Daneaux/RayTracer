@@ -7,10 +7,106 @@
 #include "Object.h"
 #include <cassert>
 
+
+static Vec3 GetAverageColor(const std::vector<Vec3>& colors)
+{
+    if (colors.empty()) return Vec3(0, 0, 0);
+    Vec3 sum(0, 0, 0);
+    for (const Vec3& c : colors) {
+        sum += c;
+    }
+    float inv = 1.0f / static_cast<float>(colors.size());
+    return sum * inv;
+}
+
+// Function to calculate reflection
+Vec3 ReflectRay(const Vec3& incident, const Vec3& normal) {
+    // Formula: R = I - 2 * dot(I, N) * N
+    // Ensure normal is normalized
+    Vec3 n = normal.Normalized();
+    return incident - n * (2.0f * Vec3::Dot(incident, n));
+}
+
+// Function to calculate refracted ray direction
+// incident: Normalized incoming ray direction
+// normal: Normalized surface normal
+// n_outside: Refractive index of outside medium (e.g., air=1.0)
+// n_inside: Refractive index of inside medium (e.g., glass=1.5)
+// refractedDir: Output normalized refracted ray direction
+// Returns: true if refraction occurred, false if Total Internal Reflection (TIR)
+bool RefractRay(
+    const Vec3& incident,
+    const Vec3& normal,
+    double n_outside,
+    double n_inside,
+    Vec3& refractedDir) {
+
+    double n1 = n_outside;
+    double n2 = n_inside;
+    Vec3 n = normal;
+
+    double cosI = -Vec3::Dot(n, incident);
+
+    // Check if we are entering or leaving the medium
+    if (cosI < 0) {
+        // Leaving the medium: invert normal and swap indices
+        cosI = -Vec3::Dot(n, incident); // cosI is now positive
+        n = -normal;
+        std::swap(n1, n2);
+    }
+
+    double eta = n1 / n2;
+    double sinT2 = eta * eta * (1.0 - cosI * cosI);
+
+    // Total Internal Reflection (TIR)
+    if (sinT2 > 1.0) return false;
+
+    double cosT = std::sqrt(1.0 - sinT2);
+
+    // Vector form of Snell's Law
+    refractedDir = (incident * eta + n * (eta * cosI - cosT)).Normalized();
+    return true;
+}
+
+float schlick_reflectance(float cosine, float ref_idx)
+{
+    // Calculate R0 (the reflectance at normal incidence)
+    float r0 = (1 - ref_idx) / (1 + ref_idx);
+    r0 = r0 * r0; // R0 = ((n1 - n2) / (n1 + n2))^2
+
+    // Apply Schlick's approximation formula
+    return r0 + (1.0f - r0) * std::pow((1.0f - cosine), 5);
+}
+
+// At this angle, outReflectance means:
+// 0.0 = fully refracted (perfectly transparent), 1.0 = fully reflected (perfect mirror).
+// In practice, the actual reflected color would be the incoming ray color multiplied by outReflectance, 
+// and the refracted color would be the incoming ray color multiplied by (1.0f - outReflectance).
+void  FresnelSchlick(
+    Vec3& incomingRayNormalized,
+    Vec3& normalNormalized,
+    float n1, float n2,
+    float& outReflectance,
+    float& outTransmittance)
+{
+    float refractionRatio = n1 / n2;
+    // 1. Calculate the cosine of the angle of incidence
+    float cos_theta = std::fmin(Vec3::Dot(-incomingRayNormalized, normalNormalized), 1.0);
+
+    // 2. Determine the ratio (reflectance)
+    outReflectance = schlick_reflectance(cos_theta, refractionRatio);
+    outTransmittance = 1.0f - outReflectance;
+}
+
 bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
+
+    maxDepth = 5;
     m_bufWidth = width;
     m_bufHeight = height;
     m_pixelBuffer.resize(width * height, 0xFF000000);
+
+    randomGenerator = std::mt19937(rd());
+    randomDistribution = std::uniform_real_distribution<>(0.0, 1.0);
 
     m_quad = std::make_unique<FullscreenQuad>();
     return m_quad->Initialize(device, width, height);
@@ -36,6 +132,11 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
         m_pixelBuffer.resize(w * h);
         m_quad->Resize(device, w, h);
     }
+
+    Material air;
+    air.diffuseColor = Vec3(0, 0, 0);
+    air.refractionIndex = 1.0;
+    // todo: other params and move to initializer
 
     for (uint32_t py = 0; py < h; ++py) {
         for (uint32_t px = 0; px < w; ++px) {
@@ -69,7 +170,10 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
 
             float screenU = (float)px / (float)w;
             float screenV = (float)py / (float)h;
-            Vec3 color = TraceRay(origin, direction, scene, screenU, screenV);
+
+            std::vector<Vec3> colors;
+            TraceRay(origin, direction, scene, screenU, screenV, air, maxDepth, colors);
+            Vec3 color = GetAverageColor(colors);
 
             uint8_t r = (uint8_t)(std::clamp(color.x, 0.0f, 1.0f) * 255.0f);
             uint8_t g = (uint8_t)(std::clamp(color.y, 0.0f, 1.0f) * 255.0f);
@@ -86,14 +190,18 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
     m_quad->Draw(device);
 }
 
-Vec3 SoftwareRenderer::TraceRay(
+void SoftwareRenderer::TraceRay(
     Vec3& origin,
     Vec3& direction,
     Scene& scene,
     float screenU,
-    float screenV)
+    float screenV,
+    Material &currentMaterial,
+    int currentDepth,
+    std::vector<Vec3> &colors)
 {
-    std::vector<Vec3> colors;
+    if (currentDepth <= 0) return;
+
     Vec3 outHit, normalA, outB, normalB;
 
     // 
@@ -103,7 +211,8 @@ Vec3 SoftwareRenderer::TraceRay(
     if(obj == nullptr) {
         // No hit: return background color (gradient based on screen coords for now)
         // later: use scene background.
-        return Vec3(screenU, screenV, 0.5f);
+        colors.push_back(Vec3(screenU, screenV, 0.5f));
+        return;
 	}
 
     //
@@ -118,31 +227,27 @@ Vec3 SoftwareRenderer::TraceRay(
     // 
 	// 3. Cast more rays: reflection, refraction, etc.
     // 
+    float n1, n2;    
+    n1 = currentMaterial.refractionIndex;    
+    Material mat = obj->GetMaterial();
+    n2 = mat.refractionIndex;
 
-    //const Material& mat = obj->GetMaterial();
-    // For simplicity, we only consider the first light in the scene
-    //Light* l = scene.GetLights()[0];
-    //PointLight& light = dynamic_cast<PointLight&>(*l);
-    //Vec3 color = ComputePhongLighting(
-    //    outHit,
-    //    normalA,
-    //    (origin - outHit).Normalized(),
-    //    dynamic_cast<SphereObject&>(*obj),
-    //    light,
-    //    scene.GetAmbientColor());
-
-
-    //
-    // Average contributions 
-    // 
-    Vec3 finalColor = {0, 0, 0};
-	float colorScale = 1.0f / (float)colors.size();
-    for (const Vec3& c : colors) {
-        finalColor += c;
+    float reflectance, transmittance;
+    FresnelSchlick(direction, normalA, n1, n2, reflectance, transmittance);
+    if (randomDistribution(randomGenerator) < reflectance) {
+        // Cast ONLY a reflection ray
+        Vec3 reflectedRay = ReflectRay(direction, normalA);
+        TraceRay(outHit, reflectedRay, scene, screenU, screenV, mat, currentDepth - 1, colors);
     }
-    finalColor = finalColor * colorScale;
-	return finalColor;
-
+    else {
+        // Cast ONLY a refraction ray
+        Vec3 refractRay;
+        bool isRefraction = RefractRay(direction, normalA, n1, n2, refractRay);
+        if (isRefraction)
+        {
+            TraceRay(outHit, refractRay, scene, screenU, screenV, mat, currentDepth - 1, colors);
+        }
+    }
 }
 
 WorldObject * SoftwareRenderer::FindClosestHit(
@@ -213,6 +318,10 @@ void SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const 
             // sanity check that occluder is between hit point and light
             assert((tempHit - hitPoint).Length() < distToLight + 0.01f);
 		} else {
+
+            //
+            // TODO this is wrong, we need to just return the color and intensity from the light and the angle.  the calling class will determine how to mix this color with all the other contributions.
+            //
 			Vec3 toOrigin = (origin - hitPoint).Normalized();
 			Vec3 toLight = toLight.Normalized();
 			float nDotL = std::max(Vec3::Dot(toOrigin, toLight), 0.0f);
@@ -221,3 +330,7 @@ void SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const 
 		}
     }
 }
+
+
+
+

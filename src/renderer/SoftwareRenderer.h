@@ -10,6 +10,7 @@
 #include "Scene.h"
 #include "Camera.h"
 #include "Lights.h"
+#include <random>
 
 
 class SoftwareRenderer : public IRenderer {
@@ -20,8 +21,15 @@ public:
                 const Camera& camera, SwapChainTarget& target) override;
 
 private:
-    Vec3 TraceRay(Vec3& origin, Vec3& direction, Scene& scene,
-                  float screenU, float screenV);
+    void TraceRay(
+        Vec3& origin,
+        Vec3& direction,
+        Scene& scene,
+        float screenU,
+        float screenV,
+        Material& currentMaterial,
+        int currentDepth,
+        std::vector<Vec3> &colors);
 
     WorldObject* FindClosestHit(const Vec3& origin, const Vec3& direction, const Scene& scene, Vec3& outHitPoint, Vec3& outNormal) const;
 
@@ -44,4 +52,10 @@ private:
     uint32_t                        m_bufWidth = 0;
     uint32_t                        m_bufHeight = 0;
     std::unique_ptr<FullscreenQuad> m_quad;
+
+    int                             maxDepth;
+
+    std::random_device              rd;
+    std::mt19937                    randomGenerator;
+    std::uniform_real_distribution<> randomDistribution;
 };
