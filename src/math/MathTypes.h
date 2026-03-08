@@ -72,6 +72,9 @@ struct Mat4 {
     static Mat4 LookAtLH(const Vec3& eye, const Vec3& target, const Vec3& up);
     static Mat4 PerspectiveFovLH(float fovY, float aspect, float nearZ, float farZ);
     static Mat4 Translation(const Vec3& t);
+    static Mat4 RotationX(float radians);
+    static Mat4 RotationY(float radians);
+    static Mat4 RotationZ(float radians);
     static Mat4 Scaling(float s);
     static Mat4 Scaling(const Vec3& s);
 

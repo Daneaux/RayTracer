@@ -347,10 +347,13 @@ bool SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const 
         // Check if shadow ray is occluded by any object
         Vec3 tempHit, tempNormal;
         WorldObject* occluder = FindClosestHit(hitPoint, shadowRayDir, scene, tempHit, tempNormal); // todo: replace with find any hit. optimized.
+        bool occluded = false;
         if(occluder != nullptr) {
-            // sanity check that occluder is between hit point and light
-            assert((tempHit - hitPoint).Length() < distToLight + 0.01f);
-		} else {
+            // Only count as occluder if it's between the hit point and the light
+            float occluderDist = (tempHit - hitPoint).Length();
+            occluded = (occluderDist < distToLight - 0.001f);
+		}
+        if (!occluded) {
             isLit = true;
             Vec3 surfaceToLight = toLight.Normalized();
             lightHitTuples.push_back(LightHitDirTuple{ *light, surfaceToLight, distToLight });

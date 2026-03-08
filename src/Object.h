@@ -142,7 +142,7 @@ public:
 
 		Vec3 planeNormal = { 0, 0, 1 };
 		float denominator = Vec3::Dot(planeNormal, objectRay.direction);
-		if (std::fabs((denominator) < 0.001f)) return false; // ray is parallel to plane or points away from plane
+		if (std::fabs(denominator) < 0.001f) return false; // ray is parallel to plane
 
 		float t = -Vec3::Dot(planeNormal, objectRay.origin) / denominator;
 		if (t < 0.001f) return false; // plane is behind ray origin
@@ -152,7 +152,7 @@ public:
 		if (std::fabs(hitPoint.x) > width * 0.5f || std::fabs(hitPoint.y) > height * 0.5f) return false; // hit point is outside quad bounds
 
 		outT = t;
-		outA = worldTransform.Transform(Vec4(hitPoint, 0.0f)).ToVec3Drop();
+		outA = worldTransform.Transform(Vec4(hitPoint, 1.0f)).ToVec3Drop();
 		normalA = worldTransform.Transform(Vec4(planeNormal, 0.0f)).ToVec3Drop().Normalized();
 
 		return true;

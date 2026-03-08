@@ -41,7 +41,7 @@ void Camera::GenerateRay(float ndcX, float ndcY, Vec3& outOrigin, Vec3& outDir) 
 }
 
 FlyCamera::FlyCamera() {
-    m_position = {0, 0, -5};
+    m_position = {0, 0, -10};
     m_forward = {0, 0, 1};
     m_yaw = 0.0f;
     m_pitch = 0.0f;

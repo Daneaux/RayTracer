@@ -32,6 +32,18 @@ Mat4 Mat4::Translation(const Vec3& t) {
     return r;
 }
 
+Mat4 Mat4::RotationX(float radians) {
+    return FromXMMATRIX(XMMatrixRotationX(radians));
+}
+
+Mat4 Mat4::RotationY(float radians) {
+    return FromXMMATRIX(XMMatrixRotationY(radians));
+}
+
+Mat4 Mat4::RotationZ(float radians) {
+    return FromXMMATRIX(XMMatrixRotationZ(radians));
+}
+
 Mat4 Mat4::Scaling(float s) {
     Mat4 r;
     r.m[0][0] = s;
