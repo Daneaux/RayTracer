@@ -80,15 +80,24 @@ void Application::SetupScene()
 
     // Add a sphere
     Material redMat;
-    redMat.diffuseColor = { 1.0f, 0.0f, 0.0f };
-    redMat.specularReflection = 0.5f;
+    redMat.diffuseColor = { 1.0f, 1.0f, 0.0f };
+    redMat.specularReflection = 0.1f;
     redMat.refractionIndex = 1.5;
+    redMat.diffuseReflection = 1.0;
     WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Identity(), redMat);
     m_scene->AddObject(sphereObj);
 
     // Add a light
-    Light* light = new PointLight({ 5.0f, 5.0f, -5.0f }, { 0.0f, 0.7f, 0.0f }, 1.0f);
+    Light* light = new PointLight({ 3.0f, 3.0f, -3.0f }, { 1.0f, 1.0f, 1.0f }, 10.0f);
     m_scene->AddLight(light);
+
+    Material quadMat;
+    quadMat.diffuseColor = { 1.0f, 0.0f, 0.0f };
+    quadMat.specularReflection = 0.5f;
+    quadMat.refractionIndex = 1.0;
+    quadMat.diffuseReflection = 1.0;
+    QuadObject* ql = new QuadObject(7, 7, Mat4::Identity(), quadMat);
+    m_scene->AddObject(ql);
 }
 
 void Application::Tick() {

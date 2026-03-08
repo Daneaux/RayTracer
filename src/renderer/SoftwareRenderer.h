@@ -12,6 +12,12 @@
 #include "Lights.h"
 #include <random>
 
+struct LightHitDirTuple
+{
+    Light& light;
+    Vec3 fromLightToHit;
+    float lightDistance;
+};
 
 class SoftwareRenderer : public IRenderer {
 public:
@@ -21,15 +27,16 @@ public:
                 const Camera& camera, SwapChainTarget& target) override;
 
 private:
-    void TraceRay(
+    Vec3 LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj);
+
+    Vec3 TraceRay(
         Vec3& origin,
         Vec3& direction,
         Scene& scene,
         float screenU,
         float screenV,
         Material& currentMaterial,
-        int currentDepth,
-        std::vector<Vec3> &colors);
+        int currentDepth);
 
     WorldObject* FindClosestHit(const Vec3& origin, const Vec3& direction, const Scene& scene, Vec3& outHitPoint, Vec3& outNormal) const;
 
@@ -46,7 +53,7 @@ private:
                               const Vec3& viewDir, const SphereObject& sphere,
                               const PointLight& light, const Vec3& ambient) const;
 
-    void CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<Vec3>& colors);
+    bool CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples);
 
     std::vector<uint32_t>           m_pixelBuffer;
     uint32_t                        m_bufWidth = 0;
