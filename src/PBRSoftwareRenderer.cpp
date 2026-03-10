@@ -1,4 +1,4 @@
-#include "renderer/SoftwareRenderer.h"
+#include "renderer/PBRSoftwareRenderer.h"
 #include "Scene.h"
 #include "Camera.h"
 #include "SwapChainTarget.h"
@@ -8,9 +8,8 @@
 #include <cassert>
 #include "renderer/utils.h"
 
-
-bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
-
+bool PBRSoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height)
+{
     maxDepth = 3;
     m_bufWidth = width;
     m_bufHeight = height;
@@ -20,15 +19,17 @@ bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t hei
     return m_quad->Initialize(device, width, height);
 }
 
-void SoftwareRenderer::OnResize(DXDevice& device, uint32_t width, uint32_t height) {
+void PBRSoftwareRenderer::OnResize(DXDevice& device, uint32_t width, uint32_t height) {
     // Buffer will be resized in Render if target dimensions differ
     (void)device;
     (void)width;
     (void)height;
 }
 
-void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
-                               const Camera& camera, SwapChainTarget& target) {
+void PBRSoftwareRenderer::Render(
+    DXDevice& device, Scene& scene,
+    const Camera& camera, SwapChainTarget& target)
+{
     uint32_t w = target.GetWidth();
     uint32_t h = target.GetHeight();
 
@@ -78,7 +79,7 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
 
             float screenU = (float)px / (float)w;
             float screenV = (float)py / (float)h;
-   
+
             Vec3 color = TraceRay(Ray3(origin, direction), scene, air, maxDepth);
 
             uint8_t r = (uint8_t)(std::clamp(color.x, 0.0f, 1.0f) * 255.0f);
@@ -90,13 +91,13 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
 
     m_quad->Upload(device, m_pixelBuffer.data(), w, h);
 
-    float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     target.Bind(device);
     target.Clear(device, clearColor);
     m_quad->Draw(device);
 }
 
-Vec3 SoftwareRenderer::LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj)
+Vec3 PBRSoftwareRenderer::LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj)
 {
     Light& light = tuple.light;
     Vec3& hitDir = tuple.fromLightToHit.Normalized();
@@ -108,82 +109,107 @@ Vec3 SoftwareRenderer::LambertShade(LightHitDirTuple& tuple, Vec3& normalA, Worl
     return color;
 }
 
-Vec3 SoftwareRenderer::TraceRay(
+Vec3 PBRSoftwareRenderer::TraceRay(
     Ray3 ray,
     Scene& scene,
     Material& currentMaterial,
     int currentDepth)
+//Vec3 PBRSoftwareRenderer::PBRTraceWithBeer(Ray3 ray, Scene& scene) 
 {
-    if (currentDepth <= 0) return Vec3(0, 0, 0);
+    Vec3 accumulated_radiance(0, 0, 0);
+    Vec3 throughput(1, 1, 1); // Tracks light attenuation per bounce
 
-    Vec3 outHit, normalA, outB, normalB;
-
-
-    // 
-    // 1. Find closest hit object
-    // 
-    WorldObject* obj = FindClosestHit(ray, scene, outHit, normalA);
-    if (obj == nullptr) {
-        return scene.GetAmbientColor();
-    }
-
-    //
-    // 2. initialize color with ambient color
-    //
-    Vec3 finalColor = scene.GetAmbientColor();
-
-    //
-    // 3. Cast shadow rays to determine lighting contribution at hit point
-    //
-    std::vector<LightHitDirTuple> lightHitTuples;
-    bool isLit = CastShadowRays(ray.origin, outHit, scene, lightHitTuples);
-    if (isLit)
+    for (int bounce = 0; bounce < MAX_BOUNCES; ++bounce)
     {
-        // do diffuse shading if any, color additive (not averaged)
-        // NOTE: this *should* averaged if we cast many rays towards the lights we'd need to average their collective (per light) contribution.
-        // for now, however, we're casting one ray towards each light.
-        for (LightHitDirTuple& tuple : lightHitTuples)
-        {
-            finalColor += LambertShade(tuple, normalA, obj);
+        Vec3 outHit, normalA;
+        WorldObject* obj = FindClosestHit(ray, scene, outHit, normalA);
+
+        Intersection hit;
+        hit.occurred = obj != nullptr;
+        if (!hit.occurred) {
+            accumulated_radiance += throughput * scene.GetAmbientColor();
+            break;
         }
-    }
+        hit.material = obj->GetMaterial();
+        hit.normal = normalA;
+        hit.point = outHit;
+        hit.distance = (ray.origin - outHit).Length();
 
-    // 
-    // 4. Cast more rays: reflection, refraction, etc.
-    // 
-    float n1, n2;
-    n1 = currentMaterial.ior;
-    Material mat = obj->GetMaterial();
-    n2 = mat.ior;
+        Material& m = hit.material;
+        accumulated_radiance += throughput * m.emissive;
 
-    bool doRR = false;
+        // --- 1. HANDLE TRANSMISSION & BEER'S LAW ---
+        float rf = randomGen.GetNext();
+        if (m.transmission > 0.0f && rf < m.transmission) {
+            bool entering = Vec3::Dot(ray.direction, hit.normal) < 0;
+            Vec3 outward_normal = entering ? hit.normal : -hit.normal;
 
-    if (doRR)
-    {
-        float reflectance, transmittance;
-        FresnelSchlick(ray.direction, normalA, n1, n2, reflectance, transmittance);
-        if (randomGen.GetNext() < reflectance) {
-            // Cast ONLY a reflection ray
-            Vec3 reflectedRay = ReflectRay(ray.direction, normalA);
-            finalColor += mat.baseColor * TraceRay(Ray3(outHit, reflectedRay), scene,  mat, currentDepth - 1);
-        }
-        else {
-            // Cast ONLY a refraction ray
-            Vec3 refractRay;
-            bool isRefraction = RefractRay(ray.direction, normalA, n1, n2, refractRay);
-            if (isRefraction)
+            float n1, n2;
+            if (entering)
             {
-                finalColor += TraceRay(Ray3(outHit, refractRay), scene, mat, currentDepth - 1);
+                n1 = 1.0f;
+                n2 = m.ior;
+            }
+            else
+            {
+                n1 = m.ior;
+                n2 = 1.0f;
+            }
+
+            Vec3 refracted_dir;
+            bool isRefraction = RefractRay(ray.direction, outward_normal, n1, n2, refracted_dir);
+            if (isRefraction) {
+                // If exiting the material, apply Beer's Law absorption
+                if (!entering) {
+                    Vec3 sigma_a = -Vec3::log(m.baseColor + 0.001f) / 1.0f; // Absorption coeff
+                    throughput *= Vec3::exp(-sigma_a * hit.distance);
+                }
+                ray = Ray3(hit.point + refracted_dir * 0.001f, refracted_dir);
+                continue; // Skip NEE/Diffuse for pure transmission
             }
         }
+
+        // --- 2. NEXT EVENT ESTIMATION (Direct Light Sampling) ---
+        // Fire a shadow ray directly to a random light to reduce noise
+        std::vector<LightHitDirTuple> lightHitTuples;
+        bool isLit = CastShadowRays(ray.origin, outHit, scene, lightHitTuples);
+        if (isLit)
+        {
+            LightHitDirTuple& tuple = lightHitTuples[0]; // todo: for now we're assuming 1 pointlight
+
+            PointLight& pl = dynamic_cast<PointLight&>(tuple.light);
+            LightSample light = sample_point_light(outHit, pl);
+            float bsdf_pdf = m.calculate_pdf(hit.normal, -ray.direction, -tuple.fromLightToHit);
+            float mis_weight = power_heuristic(light.pdf, bsdf_pdf);
+            accumulated_radiance += throughput * m.baseColor * light.radiance * mis_weight;
+        }
+
+
+        // --- 3. INDIRECT BOUNCE (Stochastic Sampling) ---
+        // Choose between Diffuse or Specular based on metallic/roughness
+        Vec3 next_dir = sample_pbr_direction(m, hit.normal, -ray.direction);
+        float pdf = m.calculate_pdf(hit.normal, -ray.direction, next_dir);
+
+        // Rendering Equation: (BRDF * cos) / PDF
+        throughput *= (m.baseColor * std::max(0.0f, Vec3::Dot(hit.normal, next_dir))) / pdf;
+        ray = Ray3(hit.point + next_dir * 0.001f, next_dir);
+
+        // --- 4. RUSSIAN ROULETTE ---
+        // Randomly terminate paths that have low throughput to save performance
+        float p = std::max(throughput.x, std::max(throughput.y, throughput.z));
+        if (bounce > 3) {
+            rf = randomGen.GetNext();
+            if (rf > p) break;
+            throughput /= p;
+        }
     }
-    return finalColor;
+    return accumulated_radiance;
 }
 
-WorldObject * SoftwareRenderer::FindClosestHit(
+WorldObject* PBRSoftwareRenderer::FindClosestHit(
     const Ray3& ray,
     const Scene& scene,
-    Vec3& outHitPoint, 
+    Vec3& outHitPoint,
     Vec3& outNormal) const
 {
     WorldObject* closestObj = nullptr;
@@ -193,7 +219,7 @@ WorldObject * SoftwareRenderer::FindClosestHit(
         Vec3 hitPointA, normalA, hitPointB, normalB;
         if (obj->IsHitByRay(ray, hitPointA, t, normalA, hitPointB, normalB)) {
             float t2 = (hitPointA - ray.origin).Length();
-			assert(std::abs(t - t2) < 0.01f); // sanity check that t matches hit point distance
+            assert(std::abs(t - t2) < 0.01f); // sanity check that t matches hit point distance
             if (t < closestT) {
                 closestT = t;
                 closestObj = obj;
@@ -205,15 +231,15 @@ WorldObject * SoftwareRenderer::FindClosestHit(
     return closestObj;
 }
 
-Vec3 SoftwareRenderer::ComputePhongLighting(
-    const Vec3& hitPoint, 
-    const Vec3& normal,                                             
-    const Vec3& viewDir, 
-    const SphereObject& sphere,                                            
+Vec3 PBRSoftwareRenderer::ComputePhongLighting(
+    const Vec3& hitPoint,
+    const Vec3& normal,
+    const Vec3& viewDir,
+    const SphereObject& sphere,
     const PointLight& light,
-    const Vec3& ambient) const 
+    const Vec3& ambient) const
 {
-	Material mat = sphere.GetMaterial();
+    Material mat = sphere.GetMaterial();
     Vec3 L = (light.position - hitPoint).Normalized();
     Vec3 H = (L + viewDir).Normalized();
 
@@ -234,7 +260,7 @@ Vec3 SoftwareRenderer::ComputePhongLighting(
 
 // casts rays from hit point to all lights to determine if in shadow and how much light contributes. 
 // For simplicity, we return a single color multiplier for all lights (1.0 = fully lit, 0.0 = in shadow).
-bool SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples)
+bool PBRSoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples)
 {
     bool isLit = false;
     for (Light* light : scene.GetLights()) {
@@ -245,16 +271,16 @@ bool SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const 
         Vec3 tempHit, tempNormal;
         WorldObject* occluder = FindClosestHit(Ray3(hitPoint, shadowRayDir), scene, tempHit, tempNormal); // todo: replace with find any hit. optimized.
         bool occluded = false;
-        if(occluder != nullptr) {
+        if (occluder != nullptr) {
             // Only count as occluder if it's between the hit point and the light
             float occluderDist = (tempHit - hitPoint).Length();
             occluded = (occluderDist < distToLight - 0.001f);
-		}
+        }
         if (!occluded) {
             isLit = true;
             Vec3 surfaceToLight = toLight.Normalized();
             lightHitTuples.push_back(LightHitDirTuple{ *light, surfaceToLight, distToLight });
-		}
+        }
     }
 
     return isLit;

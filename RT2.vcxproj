@@ -394,16 +394,19 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="src\Lights.cpp" />
     <ClCompile Include="src\Material.cpp" />
     <ClCompile Include="src\Object.cpp" />
+    <ClCompile Include="src\PBRSoftwareRenderer.cpp" />
     <ClCompile Include="src\renderer\RenderFactory.cpp" />
     <ClCompile Include="src\renderer\SoftwareRenderer.cpp" />
     <ClCompile Include="src\renderer\SceneOverviewRenderer.cpp" />
     <ClCompile Include="src\renderer\SoftwareOverviewRenderer.cpp" />
+    <ClCompile Include="src\renderer\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="renderer\RendererFactor.h" />
     <ClInclude Include="src\Lights.h" />
     <ClInclude Include="src\Material.h" />
     <ClInclude Include="src\Object.h" />
+    <ClInclude Include="src\renderer\utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

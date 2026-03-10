@@ -8,8 +8,6 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
-static const float PI = 3.14159265358979323846f;
-
 // Helper to create a static vertex/index buffer pair
 static bool CreateStaticBuffers(ID3D11Device* dev,
                                 const std::vector<ColorVertex>& verts,

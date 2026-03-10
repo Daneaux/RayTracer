@@ -19,7 +19,7 @@ struct LightHitDirTuple
     float lightDistance;
 };
 
-class SoftwareRenderer : public IRenderer {
+class PBRSoftwareRenderer : public IRenderer {
 public:
     bool Initialize(DXDevice& device, uint32_t width, uint32_t height) override;
     void OnResize(DXDevice& device, uint32_t width, uint32_t height) override;
@@ -37,12 +37,8 @@ private:
 
     WorldObject* FindClosestHit(const Ray3& ray, const Scene& scene, Vec3& outHitPoint, Vec3& outNormal) const;
 
-    Vec3 TraceRay_orig(
-        Vec3& origin, 
-        Vec3& direction, 
-        Scene& scene,
-        float screenU, 
-        float screenV);
+    Vec3 TraceRay_orig(Vec3& origin, Vec3& direction, Scene& scene,
+        float screenU, float screenV);
 
     bool IntersectSphere(
         const Vec3& origin, 

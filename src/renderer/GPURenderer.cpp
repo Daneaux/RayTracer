@@ -7,10 +7,8 @@
 #include <cstring>
 #include "../lights.h"
 
-
 #pragma comment(lib, "d3dcompiler.lib")
-
-static const float PI = 3.14159265358979323846f;
+//static const float PI = 3.14159265358979323846f;
 
 bool GPURenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
     auto* dev = device.GetDevice();
@@ -207,7 +205,7 @@ void GPURenderer::Render(
         cb->cameraPosition = Vec4(camera.GetPosition(), 0.0f);
         cb->ambientColor = Vec4(scene.GetAmbientColor(), 0.0f);
 		const Material& mat = sphere->GetMaterial();
-        cb->sphereColor = Vec4(mat.diffuseColor, mat.specularReflection);
+        cb->sphereColor = Vec4(mat.baseColor, mat.roughness);
         ctx->Unmap(m_cbPerFrame.Get(), 0);
     }
 

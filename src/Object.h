@@ -97,8 +97,8 @@ public:
 			// Get intersection point in object space then xfrom to world space
 			Vec3 hitPointA = objectRay.origin + objectRay.direction * t1;
 			Vec3 hitPointB = objectRay.origin + objectRay.direction * t2;
-			outA = worldTransform.Transform(Vec4(hitPointA, 0.0f)).ToVec3Drop();
-			outB = worldTransform.Transform(Vec4(hitPointB, 0.0f)).ToVec3Drop();
+			outA = worldTransform.Transform(Vec4(hitPointA, 1.0f)).ToVec3Drop();
+			outB = worldTransform.Transform(Vec4(hitPointB, 1.0f)).ToVec3Drop();
 
 			// Get normal to hit point in object space then xfrom to world space
 			// since sphere is at origin, normal is just normalized hit point

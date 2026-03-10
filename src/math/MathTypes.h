@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <DirectXMath.h>
 
+constexpr float PI = 3.14159265358979323846;
+
 struct Vec3 {
     float x, y, z;
 
@@ -11,14 +13,25 @@ struct Vec3 {
     Vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
     Vec3 operator+(const Vec3& b) const { return {x + b.x, y + b.y, z + b.z}; }
+    Vec3 operator+(float s) const { return { x + s, y + s, z + s }; }
+
+    Vec3 operator-() const { return { -x, -y, -z }; }
     Vec3 operator-(const Vec3& b) const { return {x - b.x, y - b.y, z - b.z}; }
+    Vec3 operator-(float s) const { return { x - s, y - s, z - s }; }
+
     Vec3 operator*(float s) const { return {x * s, y * s, z * s}; }
     Vec3 operator*(const Vec3& b) const { return {x * b.x, y * b.y, z * b.z}; }
-    Vec3 operator-() const { return {-x, -y, -z}; }
+
+    Vec3 operator/(float s) const { return { x / s, y / s, z / s }; }
+    Vec3& operator/=(float b) { x /= b; y /= b; z /= b; return *this; }
+
     Vec3& operator+=(const Vec3& b) { x += b.x; y += b.y; z += b.z; return *this; }
     Vec3& operator-=(const Vec3& b) { x -= b.x; y -= b.y; z -= b.z; return *this; }
+    Vec3& operator*=(const Vec3& b) { x *= b.x; y *= b.y; z *= b.z; return *this; }
+
 
     float Length() const { return std::sqrt(x * x + y * y + z * z); }
+
     float LengthSq() const { return x * x + y * y + z * z; }
 
     Vec3 Normalized() const {
@@ -38,6 +51,14 @@ struct Vec3 {
             a.z * b.x - a.x * b.z,
             a.x * b.y - a.y * b.x
         };
+    }
+
+    static Vec3 exp(const Vec3& v) {
+        return Vec3(std::exp(v.x), std::exp(v.y), std::exp(v.z));
+    }
+
+    static Vec3 log(const Vec3& v) {
+        return Vec3(std::log(v.x), std::log(v.y), std::log(v.z));
     }
 };
 

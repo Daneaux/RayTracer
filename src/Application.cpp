@@ -80,10 +80,9 @@ void Application::SetupScene()
 
     // Add a sphere
     Material redMat;
-    redMat.diffuseColor = { 1.0f, 1.0f, 0.0f };
-    redMat.specularReflection = 0.1f;
-    redMat.refractionIndex = 1.5;
-    redMat.diffuseReflection = 1.0;
+    redMat.baseColor = { 1.0f, 1.0f, 0.0f };
+    redMat.roughness = 0.1f;
+    redMat.ior = 1.5;
     WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Identity(), redMat);
     m_scene->AddObject(sphereObj);
 
@@ -97,46 +96,41 @@ void Application::SetupScene()
 
     // Floor (Y=-3, normal faces up)
     Material floorMat;
-    floorMat.diffuseColor = { 0.2f, 0.8f, 0.2f }; // green
-    floorMat.specularReflection = 0.1f;
-    floorMat.refractionIndex = 1.0f;
-    floorMat.diffuseReflection = 1.0f;
+    floorMat.baseColor = { 0.2f, 0.8f, 0.2f }; // green
+    floorMat.roughness = 0.0f;
+    floorMat.ior = 1.0f;
     m_scene->AddObject(new QuadObject(quadSize, quadSize,
         Mat4::RotationX(-PI * 0.5f) * Mat4::Translation({ 0, -boxDist, 0 }), floorMat));
 
     // Back wall (Z=+3, normal faces -Z toward camera)
     Material backMat;
-    backMat.diffuseColor = { 0.8f, 0.2f, 0.2f }; // red
-    backMat.specularReflection = 0.1f;
-    backMat.refractionIndex = 1.0f;
-    backMat.diffuseReflection = 1.0f;
+    backMat.baseColor = { 0.8f, 0.2f, 0.2f }; // red
+    backMat.roughness = 0.0f;
+    backMat.ior = 1.0f;
     m_scene->AddObject(new QuadObject(quadSize, quadSize,
         Mat4::RotationY(PI) * Mat4::Translation({ 0, 0, boxDist }), backMat));
 
     // Left wall (X=-3, normal faces +X)
     Material leftMat;
-    leftMat.diffuseColor = { 0.2f, 0.2f, 0.8f }; // blue
-    leftMat.specularReflection = 0.1f;
-    leftMat.refractionIndex = 1.0f;
-    leftMat.diffuseReflection = 1.0f;
+    leftMat.baseColor = { 0.2f, 0.2f, 0.8f }; // blue
+    leftMat.roughness = 0.0f;
+    leftMat.ior = 1.0f;
     m_scene->AddObject(new QuadObject(quadSize, quadSize,
         Mat4::RotationY(PI * 0.5f) * Mat4::Translation({ -boxDist, 0, 0 }), leftMat));
 
     // Right wall (X=+3, normal faces -X)
     Material rightMat;
-    rightMat.diffuseColor = { 0.8f, 0.8f, 0.2f }; // yellow
-    rightMat.specularReflection = 0.1f;
-    rightMat.refractionIndex = 1.0f;
-    rightMat.diffuseReflection = 1.0f;
+    rightMat.baseColor = { 0.8f, 0.8f, 0.2f }; // yellow
+    rightMat.roughness = 0.0f;
+    rightMat.ior = 1.0f;
     m_scene->AddObject(new QuadObject(quadSize, quadSize,
         Mat4::RotationY(-PI * 0.5f) * Mat4::Translation({ boxDist, 0, 0 }), rightMat));
 
     // Ceiling (Y=+3, normal faces -Y down)
     Material ceilMat;
-    ceilMat.diffuseColor = { 0.8f, 0.2f, 0.8f }; // magenta
-    ceilMat.specularReflection = 0.1f;
-    ceilMat.refractionIndex = 1.0f;
-    ceilMat.diffuseReflection = 1.0f;
+    ceilMat.baseColor = { 0.8f, 0.2f, 0.8f }; // magenta
+    ceilMat.roughness = 0.0f;
+    ceilMat.ior = 1.0f;
     m_scene->AddObject(new QuadObject(quadSize, quadSize,
         Mat4::RotationX(PI * 0.5f) * Mat4::Translation({ 0, boxDist, 0 }), ceilMat));
 }

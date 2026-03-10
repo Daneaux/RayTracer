@@ -5,7 +5,6 @@
 #include <cmath>
 #include <algorithm>
 
-static const float PI = 3.14159265358979323846f;
 static const float NEAR_CLIP_W = 0.001f;
 
 bool SoftwareOverviewRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
@@ -152,7 +151,7 @@ void SoftwareOverviewRenderer::DrawSphereWireframe(
     const uint32_t slices = 16;
     const uint32_t stacks = 8;
 	Material mat = sphere.GetMaterial();
-    Vec4 color = {mat.diffuseColor, 1.0f};
+    Vec4 color = {mat.baseColor, 1.0f};
 
     auto vtx = [&](uint32_t i, uint32_t j) -> Vec3 {
         float phi   = PI * (float)i / (float)stacks;
