@@ -28,5 +28,5 @@ public:
 private:
     std::vector<WorldObject*> objects;
     std::vector<Light*>       lights;
-    Vec3       ambientColor = {0.1f, 0.1f, 0.1f};
+    Vec3       ambientColor = {0.05f, 0.05f, 0.05f};
 };

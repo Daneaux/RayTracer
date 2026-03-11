@@ -83,11 +83,42 @@ void Application::SetupScene()
     redMat.baseColor = { 1.0f, 1.0f, 0.0f };
     redMat.roughness = 0.1f;
     redMat.ior = 1.5;
+    redMat.transmission = 0.75;
     WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Identity(), redMat);
     m_scene->AddObject(sphereObj);
 
+    // Add debug spheres with different materials
+    // Sphere 1: Mirror-like (roughness=0, ior not used for metals)
+    Material mirrorMat;
+    mirrorMat.baseColor = { 1.0f, 1.0f, 1.0f };
+    mirrorMat.roughness = 0.0f;
+    mirrorMat.metallic = 1.0f;
+    mirrorMat.ior = 1.5;
+    mirrorMat.transmission = 0.0f;
+    WorldObject* mirrorSphere = new SphereObject(0.8f, Mat4::Translation({ -2.5f, -2.2f, 0.0f }), mirrorMat);
+    m_scene->AddObject(mirrorSphere);
+
+    // Sphere 2: mirror-like (roughness=0)  bottom left in scene.
+    Material glassMat;
+    glassMat.baseColor = { 1.0f, 1.0f, 1.0f };
+    glassMat.roughness = 0.0f;
+    glassMat.ior = 1.5;
+    glassMat.transmission = 1.0f;
+    glassMat.metallic = 1.0f;
+    WorldObject* glassSphere = new SphereObject(1.2f, Mat4::Translation({ 2.5f, -3.0f, 0.0f }), glassMat);
+    m_scene->AddObject(glassSphere);
+
+    // Sphere 3: Rough diffuse (high roughness)
+    Material roughMat;
+    roughMat.baseColor = { 0.8f, 0.2f, 0.2f };
+    roughMat.roughness = 0.8f;
+    roughMat.ior = 1.5f;
+    roughMat.transmission = 0.25f;
+    WorldObject* roughSphere = new SphereObject(0.8f, Mat4::Translation({ 0.0f, -2.2f, 2.5f }), roughMat);
+    m_scene->AddObject(roughSphere);
+
     // Add a light
-    Light* light = new PointLight({ 3.0f, 3.0f, -3.0f }, { 1.0f, 1.0f, 1.0f }, 10.0f);
+    Light* light = new PointLight({ 2.5f, 2.5f, -3.0f }, { 1.0f, 1.0f, 1.0f }, 5.0f);
     m_scene->AddLight(light);
 
     const float PI = 3.14159265f;
@@ -99,14 +130,20 @@ void Application::SetupScene()
     floorMat.baseColor = { 0.2f, 0.8f, 0.2f }; // green
     floorMat.roughness = 0.0f;
     floorMat.ior = 1.0f;
-    m_scene->AddObject(new QuadObject(quadSize, quadSize,
-        Mat4::RotationX(-PI * 0.5f) * Mat4::Translation({ 0, -boxDist, 0 }), floorMat));
+    QuadObject* floorQuad = new QuadObject(quadSize, quadSize,
+        Mat4::RotationX(-PI * 0.5f) * Mat4::Translation({ 0, -boxDist, 0 }), floorMat);
+    floorQuad->useCheckeredPattern = true;
+    floorQuad->checkerColor1 = { 0.0f, 0.0f, 1.0f };
+    floorQuad->checkerColor2 = { 1.0f, 0.0f, 0.0f };
+    floorQuad->checkerScale = 0.5f;
+    m_scene->AddObject(floorQuad);
 
     // Back wall (Z=+3, normal faces -Z toward camera)
     Material backMat;
     backMat.baseColor = { 0.8f, 0.2f, 0.2f }; // red
     backMat.roughness = 0.0f;
     backMat.ior = 1.0f;
+    backMat.transmission = 0.0;
     m_scene->AddObject(new QuadObject(quadSize, quadSize,
         Mat4::RotationY(PI) * Mat4::Translation({ 0, 0, boxDist }), backMat));
 

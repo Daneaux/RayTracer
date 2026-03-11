@@ -46,6 +46,18 @@ struct Intersection {
     Material material;      // The material properties of the object hit
 };
 
+struct LightHitDirTuple
+{
+    Light& light;
+    Vec3 surfaceToLightNormalized;
+    float lightDistance;
+};
+
+struct ShadingComponents {
+    Vec3 diffuse;
+    Vec3 specular;
+};
+
 template <typename T>
 constexpr T lerp(T a, T b, T t);
 
@@ -88,4 +100,8 @@ float power_heuristic(float pdf_f, float pdf_g);
 float schlick_reflectance(float cosine, float ref_idx);
 
 LightSample sample_point_light(Vec3 hit_point, const PointLight& light);
+
+Vec3 LambertShadingModel(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj);
+Vec3 BlinnPhongWithLightAttenuation(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat);
+ShadingComponents BlinnPhongSeparated(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat);
 

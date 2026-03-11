@@ -14,6 +14,85 @@ constexpr T lerp(T a, T b, T t) {
     return std::fma(t, b - a, a);
 }
 
+Vec3 LambertShadingModel(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj)
+{
+    Light& light = tuple.light;
+    Vec3& hitDir = tuple.surfaceToLightNormalized;
+    float diffuseFactor = Vec3::Dot(normalA, hitDir);
+    diffuseFactor = std::max(0.0f, diffuseFactor);
+    float attenuation = 1.0f / (tuple.lightDistance * tuple.lightDistance + 1.0f);
+
+    Vec3 color = attenuation * diffuseFactor * light.color * light.intensity * obj->GetMaterial().baseColor;
+    return color;
+}
+
+Vec3 BlinnPhongWithLightAttenuation(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat)
+{
+    Light& light = tuple.light;
+    Vec3& hitDir = tuple.surfaceToLightNormalized;
+    float diffuseFactor = Vec3::Dot(hitNormal, hitDir);
+    diffuseFactor = std::max(0.0f, diffuseFactor);
+    float attenuation = 1.0f / (tuple.lightDistance * tuple.lightDistance + 1.0f);
+
+    Vec3 halfVec = (hitDir + viewDir).Normalized();
+    float specularPower = std::pow(2.0f, 10.0f * (1.0f - mat.roughness));
+    float specularFactor = std::pow(std::max(Vec3::Dot(hitNormal, halfVec), 0.0f), specularPower);
+    specularFactor = std::max(0.0f, specularFactor);
+
+    Vec3 color = attenuation * light.intensity * (
+        diffuseFactor * light.color * mat.baseColor +
+        specularFactor * light.color);
+    return color;
+}
+
+
+ShadingComponents BlinnPhongSeparated(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat)
+{
+    Light& light = tuple.light;
+    Vec3& L = tuple.surfaceToLightNormalized;
+
+    // 1. Attenuation
+    float partAtt = 0.01f * tuple.lightDistance;
+    float attenuation = 1.0f / (1.0f + partAtt + partAtt * tuple.lightDistance);
+    float energy = attenuation * light.intensity;
+
+    // 2. Diffuse Component (Lambert)
+    float diffuseFactor = std::max(0.0f, Vec3::Dot(hitNormal, L));
+    Vec3 diffuseResult = (light.color * mat.baseColor) * (diffuseFactor * energy);
+
+    // 3. Specular Component (Blinn-Phong)
+    Vec3 halfVec = (L + viewDir).Normalized();
+    float specularPower = std::pow(2.0f, 10.0f * (1.0f - mat.roughness));
+    float specularFactor = std::pow(std::max(Vec3::Dot(hitNormal, halfVec), 0.0f), specularPower);
+    Vec3 specularResult = light.color * (specularFactor * energy);
+
+    return ShadingComponents { diffuseResult, specularResult };
+}
+
+
+Vec3 offbrandPhong(
+    const Vec3& hitPoint,
+    const Vec3& normal,
+    const Vec3& viewDir,
+    const SphereObject& sphere,
+    const PointLight& light,
+    const Vec3& ambient)
+{
+    Material mat = sphere.GetMaterial();
+    Vec3 L = (light.position - hitPoint).Normalized();
+    Vec3 H = (L + viewDir).Normalized();
+
+    float diff = std::max(Vec3::Dot(normal, L), 0.0f);
+    float specularPower = std::pow(2.0f, 10.0f * (1.0f - mat.roughness));
+    float spec = std::pow(std::max(Vec3::Dot(normal, H), 0.0f), specularPower);
+
+    Vec3 ambientTerm = ambient * mat.baseColor;
+    Vec3 diffuseTerm = mat.baseColor * light.color * (diff * light.intensity);
+    Vec3 specularTerm = light.color * (spec * light.intensity);
+
+    return ambientTerm + diffuseTerm + specularTerm;
+}
+
 static Vec3 GetAverageColor(const std::vector<Vec3>& colors)
 {
     if (colors.empty()) return Vec3(0, 0, 0);
@@ -54,10 +133,9 @@ bool RefractRay(
     double cosI = -Vec3::Dot(n, incident);
 
     // Check if we are entering or leaving the medium
-    if (cosI < 0) {
-        // Leaving the medium: invert normal and swap indices
-        cosI = -Vec3::Dot(n, incident); // cosI is now positive
-        n = -normal;
+    if (cosI < 0) { // We are hitting the surface from the INSIDE
+        n = -normal;   // Flip normal to point inward
+        cosI = -cosI;  // Now cosI is positive relative to the flipped normal
         std::swap(n1, n2);
     }
 
@@ -103,6 +181,38 @@ void  FresnelSchlick(
     outReflectance = schlick_reflectance(cos_theta, refractionRatio);
     outTransmittance = 1.0f - outReflectance;
 }
+
+void FresnelSchlick(
+    const Vec3& incomingRay,
+    const Vec3& normal,
+    float n1, float n2,
+    float& outReflectance,
+    float& outTransmittance)
+{
+    float eta = n1 / n2;
+    float cos_theta_i = std::fmin(Vec3::Dot(-incomingRay, normal), 1.0f);
+
+    // Check for Total Internal Reflection (TIR)
+    // Using Snell's Law: sin^2(theta_t) = eta^2 * (1 - cos^2(theta_i))
+    float sin2_theta_t = eta * eta * (1.0f - cos_theta_i * cos_theta_i);
+
+    if (sin2_theta_t > 1.0f) {
+        // TIR occurred: 100% reflection, 0% refraction
+        outReflectance = 1.0f;
+        outTransmittance = 0.0f;
+        return;
+    }
+
+    // For Schlick's approx in dense-to-thin transitions, use cos(theta_t)
+    float cos_theta = (n1 > n2) ? std::sqrt(1.0f - sin2_theta_t) : cos_theta_i;
+
+    // Calculate Schlick's Reflectance
+    float r0 = (n1 - n2) / (n1 + n2);
+    r0 = r0 * r0;
+    outReflectance = r0 + (1.0f - r0) * std::pow(1.0f - cos_theta, 5.0f);
+    outTransmittance = 1.0f - outReflectance;
+}
+
 
 Vec3 align_to_normal(const Vec3& local_dir, const Vec3& normal) {
     // 1. We start with our "Z" axis, which is the surface normal (W)

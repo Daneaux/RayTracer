@@ -44,26 +44,26 @@ struct Material {
 	// 1. BASE COLOR (Albedo)
 	// For dielectrics: the diffuse color.
 	// For metals: the specular reflectance color.
-	Vec3 baseColor;
+	Vec3 baseColor = Vec3(0.0f,0.0f,0.0f);
 
 	// 2. SURFACE PROPERTIES
 	// 0.0 = Smooth/Mirror, 1.0 = Matte/Rough.
-	float roughness;
+	float roughness = 0.0f;
 	// 0.0 = Plastic/Glass (Dielectric), 1.0 = Pure Metal.
-	float metallic;
+	float metallic = 0.0f;
 
 	// 3. OPTICAL PROPERTIES
 	// Used for Fresnel reflection and Refraction paths.
-	float ior;           // Index of Refraction (e.g., 1.5 for glass)
-	float transmission;  // 0 = Opaque, 1 = Fully transparent (glass)
+	float ior = 1.0f;           // Index of Refraction (e.g., 1.5 for glass)
+	float transmission = 0.0f;  // 0 = Opaque, 1 = Fully transparent (glass)
 
 	// 4. EMISSION
-	Vec3 emissive;       // Light the object actually glows with
-	float emissivePower; // Multiplier for the glow intensity
+	Vec3 emissive = Vec3(0.0f, 0.0f, 0.0f);       // Light the object actually glows with
+	float emissivePower = 0.0f; // Multiplier for the glow intensity
 
 	// 5. ADVANCED (Optional)
-	float subsurface;    // For skin, wax, or marble
-	Vec3 clearcoat;      // A secondary "lacquer" layer on top
+	float subsurface = 0.0f;    // For skin, wax, or marble
+	Vec3 clearcoat = Vec3(0.0f, 0.0f, 0.0f);      // A secondary "lacquer" layer on top
 
 	float calculate_pdf(Vec3 normal, Vec3 view_dir, Vec3 light_dir);
 };

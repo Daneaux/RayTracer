@@ -7,11 +7,12 @@
 #include "Object.h"
 #include <cassert>
 #include "renderer/utils.h"
+#include <string>
 
 
 bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
 
-    maxDepth = 3;
+    maxDepth = 8;
     m_bufWidth = width;
     m_bufHeight = height;
     m_pixelBuffer.resize(width * height, 0xFF000000);
@@ -96,18 +97,6 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
     m_quad->Draw(device);
 }
 
-Vec3 SoftwareRenderer::LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj)
-{
-    Light& light = tuple.light;
-    Vec3& hitDir = tuple.fromLightToHit.Normalized();
-    float diffuseFactor = Vec3::Dot(normalA, hitDir);
-    diffuseFactor = std::max(0.0f, diffuseFactor);
-    float attenuation = 1.0f / (tuple.lightDistance * tuple.lightDistance + 1.0f);
-
-    Vec3 color = attenuation * diffuseFactor * light.color * light.intensity * obj->GetMaterial().baseColor;
-    return color;
-}
-
 Vec3 SoftwareRenderer::TraceRay(
     Ray3 ray,
     Scene& scene,
@@ -118,66 +107,103 @@ Vec3 SoftwareRenderer::TraceRay(
 
     Vec3 outHit, normalA, outB, normalB;
 
-
     // 
-    // 1. Find closest hit object
+    // -- Find closest hit object
     // 
     WorldObject* obj = FindClosestHit(ray, scene, outHit, normalA);
     if (obj == nullptr) {
         return scene.GetAmbientColor();
     }
 
-    //
-    // 2. initialize color with ambient color
-    //
-    Vec3 finalColor = scene.GetAmbientColor();
+    Material mat = obj->GetMaterial();
+    if (obj->IsQuad()) {
+        QuadObject* quad = (QuadObject*)obj;
+        if (quad->useCheckeredPattern) {
+            Vec3 checkerColor = quad->GetColorAtPoint(outHit);
+            mat.baseColor = checkerColor;
+        }
+    }
 
     //
-    // 3. Cast shadow rays to determine lighting contribution at hit point
+    // -- Cast shadow rays to determine lighting contribution at hit point
     //
     std::vector<LightHitDirTuple> lightHitTuples;
+    ShadingComponents shadeComponents;
     bool isLit = CastShadowRays(ray.origin, outHit, scene, lightHitTuples);
     if (isLit)
     {
         // do diffuse shading if any, color additive (not averaged)
         // NOTE: this *should* averaged if we cast many rays towards the lights we'd need to average their collective (per light) contribution.
         // for now, however, we're casting one ray towards each light.
+        Vec3 viewDir = -ray.direction.Normalized();
         for (LightHitDirTuple& tuple : lightHitTuples)
         {
-            finalColor += LambertShade(tuple, normalA, obj);
+            //finalColor += BlinnPhongWithLightAttenuation(tuple, normalA, viewDir, mat);
+            shadeComponents = BlinnPhongSeparated(tuple, normalA, viewDir, mat);
         }
     }
 
     // 
-    // 4. Cast more rays: reflection, refraction, etc.
+    // -- Cast more rays: reflection, refraction, etc.
     // 
     float n1, n2;
     n1 = currentMaterial.ior;
-    Material mat = obj->GetMaterial();
     n2 = mat.ior;
 
-    bool doRR = false;
+    bool doRR = true;
+
+    Vec3 colorKr = Vec3(0, 0, 0);
+    Vec3 colorKt = Vec3(0, 0, 0);
 
     if (doRR)
     {
-        float reflectance, transmittance;
-        FresnelSchlick(ray.direction, normalA, n1, n2, reflectance, transmittance);
-        if (randomGen.GetNext() < reflectance) {
-            // Cast ONLY a reflection ray
-            Vec3 reflectedRay = ReflectRay(ray.direction, normalA);
-            finalColor += mat.baseColor * TraceRay(Ray3(outHit, reflectedRay), scene,  mat, currentDepth - 1);
-        }
-        else {
-            // Cast ONLY a refraction ray
+        float kr, kt;
+        float alpha = mat.transmission;
+
+        FresnelSchlick(ray.direction, normalA, n1, n2, kr, kt);
+
+        Vec3 reflectedRay = ReflectRay(ray.direction, normalA);
+        Vec3 rayOrigin = outHit + normalA * 0.001f;
+        colorKr = kr * TraceRay(Ray3(rayOrigin, reflectedRay), scene, mat, currentDepth - 1);
+        
+        if (kt > 0.0f)
+        {
             Vec3 refractRay;
             bool isRefraction = RefractRay(ray.direction, normalA, n1, n2, refractRay);
             if (isRefraction)
             {
-                finalColor += TraceRay(Ray3(outHit, refractRay), scene, mat, currentDepth - 1);
+                Vec3 rayOrigin = outHit - normalA * 0.001f;
+                colorKt = kt * TraceRay(Ray3(rayOrigin, refractRay), scene, mat, currentDepth - 1);                
             }
         }
+
+        //finalColor += colorRT;
+        //finalColor += (1.0f - alpha) * mat.baseColor;
     }
-    return finalColor;
+    else
+    {
+        //finalColor += scene.GetAmbientColor();
+    }
+
+
+    Vec3 finalColor = { 0, 0, 0 };
+    if (isLit)    
+        finalColor += shadeComponents.specular;    
+
+    float T = mat.transmission;
+    if (T > 0.0f)
+        finalColor += colorKt * T;
+
+    if (T < 1.0f && isLit)
+        finalColor += shadeComponents.diffuse * (1.0f - T);
+
+    finalColor += colorKr;
+
+    return {
+        std::min(finalColor.x, 1.0f),
+        std::min(finalColor.y, 1.0f),
+        std::min(finalColor.z, 1.0f)
+    };
 }
 
 WorldObject * SoftwareRenderer::FindClosestHit(
@@ -205,33 +231,6 @@ WorldObject * SoftwareRenderer::FindClosestHit(
     return closestObj;
 }
 
-Vec3 SoftwareRenderer::ComputePhongLighting(
-    const Vec3& hitPoint, 
-    const Vec3& normal,                                             
-    const Vec3& viewDir, 
-    const SphereObject& sphere,                                            
-    const PointLight& light,
-    const Vec3& ambient) const 
-{
-	Material mat = sphere.GetMaterial();
-    Vec3 L = (light.position - hitPoint).Normalized();
-    Vec3 H = (L + viewDir).Normalized();
-
-    float diff = std::max(Vec3::Dot(normal, L), 0.0f);
-    float spec = std::pow(std::max(Vec3::Dot(normal, H), 0.0f), mat.roughness);
-
-    Vec3 ambientTerm = ambient * mat.baseColor;
-    Vec3 diffuseTerm = mat.baseColor * light.color * (diff * light.intensity);
-    Vec3 specularTerm = light.color * (spec * light.intensity);
-
-    return {
-        ambientTerm.x + diffuseTerm.x + specularTerm.x,
-        ambientTerm.y + diffuseTerm.y + specularTerm.y,
-        ambientTerm.z + diffuseTerm.z + specularTerm.z
-    };
-}
-
-
 // casts rays from hit point to all lights to determine if in shadow and how much light contributes. 
 // For simplicity, we return a single color multiplier for all lights (1.0 = fully lit, 0.0 = in shadow).
 bool SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples)
@@ -252,8 +251,7 @@ bool SoftwareRenderer::CastShadowRays(Vec3& origin, const Vec3& hitPoint, const 
 		}
         if (!occluded) {
             isLit = true;
-            Vec3 surfaceToLight = toLight.Normalized();
-            lightHitTuples.push_back(LightHitDirTuple{ *light, surfaceToLight, distToLight });
+            lightHitTuples.push_back(LightHitDirTuple{ *light, toLight.Normalized(), distToLight });
 		}
     }
 

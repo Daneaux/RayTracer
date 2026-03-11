@@ -11,13 +11,7 @@
 #include "Camera.h"
 #include "Lights.h"
 #include <random>
-
-struct LightHitDirTuple
-{
-    Light& light;
-    Vec3 fromLightToHit;
-    float lightDistance;
-};
+#include "renderer/utils.h"
 
 class SoftwareRenderer : public IRenderer {
 public:
@@ -27,8 +21,6 @@ public:
                 const Camera& camera, SwapChainTarget& target) override;
 
 private:
-    Vec3 LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj);
-
     Vec3 TraceRay(
         Ray3 ray,
         Scene& scene,

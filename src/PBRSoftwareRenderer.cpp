@@ -97,18 +97,6 @@ void PBRSoftwareRenderer::Render(
     m_quad->Draw(device);
 }
 
-Vec3 PBRSoftwareRenderer::LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj)
-{
-    Light& light = tuple.light;
-    Vec3& hitDir = tuple.fromLightToHit.Normalized();
-    float diffuseFactor = Vec3::Dot(normalA, hitDir);
-    diffuseFactor = std::max(0.0f, diffuseFactor);
-    float attenuation = 1.0f / (tuple.lightDistance * tuple.lightDistance + 1.0f);
-
-    Vec3 color = attenuation * diffuseFactor * light.color * light.intensity * obj->GetMaterial().baseColor;
-    return color;
-}
-
 Vec3 PBRSoftwareRenderer::TraceRay(
     Ray3 ray,
     Scene& scene,
@@ -179,11 +167,10 @@ Vec3 PBRSoftwareRenderer::TraceRay(
 
             PointLight& pl = dynamic_cast<PointLight&>(tuple.light);
             LightSample light = sample_point_light(outHit, pl);
-            float bsdf_pdf = m.calculate_pdf(hit.normal, -ray.direction, -tuple.fromLightToHit);
+            float bsdf_pdf = m.calculate_pdf(hit.normal, -ray.direction, tuple.surfaceToLightNormalized);
             float mis_weight = power_heuristic(light.pdf, bsdf_pdf);
             accumulated_radiance += throughput * m.baseColor * light.radiance * mis_weight;
         }
-
 
         // --- 3. INDIRECT BOUNCE (Stochastic Sampling) ---
         // Choose between Diffuse or Specular based on metallic/roughness
@@ -230,33 +217,6 @@ WorldObject* PBRSoftwareRenderer::FindClosestHit(
     }
     return closestObj;
 }
-
-Vec3 PBRSoftwareRenderer::ComputePhongLighting(
-    const Vec3& hitPoint,
-    const Vec3& normal,
-    const Vec3& viewDir,
-    const SphereObject& sphere,
-    const PointLight& light,
-    const Vec3& ambient) const
-{
-    Material mat = sphere.GetMaterial();
-    Vec3 L = (light.position - hitPoint).Normalized();
-    Vec3 H = (L + viewDir).Normalized();
-
-    float diff = std::max(Vec3::Dot(normal, L), 0.0f);
-    float spec = std::pow(std::max(Vec3::Dot(normal, H), 0.0f), mat.roughness);
-
-    Vec3 ambientTerm = ambient * mat.baseColor;
-    Vec3 diffuseTerm = mat.baseColor * light.color * (diff * light.intensity);
-    Vec3 specularTerm = light.color * (spec * light.intensity);
-
-    return {
-        ambientTerm.x + diffuseTerm.x + specularTerm.x,
-        ambientTerm.y + diffuseTerm.y + specularTerm.y,
-        ambientTerm.z + diffuseTerm.z + specularTerm.z
-    };
-}
-
 
 // casts rays from hit point to all lights to determine if in shadow and how much light contributes. 
 // For simplicity, we return a single color multiplier for all lights (1.0 = fully lit, 0.0 = in shadow).

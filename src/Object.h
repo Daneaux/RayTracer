@@ -3,19 +3,6 @@
 #include <math/MathTypes.h>
 #include <memory>
 
-class Object {
-
-public:
-	Object() = default;
-	Object(bool isRenderable)  : isRenderable(isRenderable)
-	{
-	};
-	bool IsRenderable() const { return isRenderable; }
-
-
-protected:
-	bool isRenderable = false;
-};
 
 class WorldObject {
 	public:
@@ -35,9 +22,10 @@ class WorldObject {
 	}
 	const Material& GetMaterial() const { return material; }
 
+	virtual bool IsQuad() const { return false; }
 	virtual bool IsHitByRay(const Ray3& ray, Vec3& outA, float& outT, Vec3& normalA, Vec3& outB, Vec3& normalB) const = 0;
 
-protected:
+//protected:
 	Mat4 worldTransform;
 	Material material;
 	Mat4 inverseWorldTransform;
@@ -127,6 +115,23 @@ public:
 	{
 	}
 
+	bool IsQuad() const override { return true; }
+
+	bool useCheckeredPattern = false;
+	Vec3 checkerColor1 = Vec3(1.0f, 1.0f, 1.0f);
+	Vec3 checkerColor2 = Vec3(0.0f, 0.0f, 0.0f);
+	float checkerScale = 2.0f;
+
+	Vec3 GetColorAtPoint(const Vec3& worldPoint) const {
+		if (!useCheckeredPattern) {
+			return material.baseColor;
+		}
+		Vec3 localPoint = inverseWorldTransform.Transform(Vec4(worldPoint, 1.0f)).ToVec3Drop();
+		int x = (int)std::floor(localPoint.x * checkerScale);
+		int y = (int)std::floor(localPoint.y * checkerScale);
+		return ((x + y) % 2 == 0) ? checkerColor1 : checkerColor2;
+	}
+
 	bool IsHitByRay(const Ray3& ray, Vec3& outA, float& outT, Vec3& normalA, Vec3& outB, Vec3& normalB) const override {
 		Ray3 objectRay = {
 			inverseWorldTransform.Transform(Vec4(ray.origin, 1.0f)).ToVec3Drop(),
@@ -158,6 +163,6 @@ public:
 		return true;
 	}
 
-private:
+//private:
 	float width, height;
 };

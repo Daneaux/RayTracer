@@ -11,13 +11,8 @@
 #include "Camera.h"
 #include "Lights.h"
 #include <random>
+#include "renderer/utils.h"
 
-struct LightHitDirTuple
-{
-    Light& light;
-    Vec3 fromLightToHit;
-    float lightDistance;
-};
 
 class PBRSoftwareRenderer : public IRenderer {
 public:
@@ -27,7 +22,6 @@ public:
                 const Camera& camera, SwapChainTarget& target) override;
 
 private:
-    Vec3 LambertShade(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj);
 
     Vec3 TraceRay(
         Ray3 ray,
@@ -46,16 +40,11 @@ private:
         const SphereObject& sphere, 
         float& t) const;
 
-    Vec3 ComputePhongLighting(const Vec3& hitPoint, const Vec3& normal,
-                              const Vec3& viewDir, const SphereObject& sphere,
-                              const PointLight& light, const Vec3& ambient) const;
-
     bool CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples);
 
     std::vector<uint32_t>           m_pixelBuffer;
     uint32_t                        m_bufWidth = 0;
     uint32_t                        m_bufHeight = 0;
     std::unique_ptr<FullscreenQuad> m_quad;
-
     int                             maxDepth;
 };
