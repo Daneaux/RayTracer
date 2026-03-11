@@ -19,10 +19,12 @@ set(COMMON_SOURCES
     src/math/MathTypes.cpp
     src/renderer/FullscreenQuad.cpp
     src/renderer/GPURenderer.cpp
+    src/renderer/SoftwareRendererBase.cpp
     src/renderer/SoftwareRenderer.cpp
     src/renderer/SceneOverviewRenderer.cpp
     src/renderer/SoftwareOverviewRenderer.cpp
     src/renderer/RenderFactory.cpp
+    src/renderer/PBRSoftwareRenderer.cpp
 )
 
 
