@@ -1,7 +1,6 @@
 #pragma once
 
-#include "renderer/IRenderer.h"
-#include "renderer/FullscreenQuad.h"
+#include "renderer/SoftwareRendererBase.h"
 #include "math/MathTypes.h"
 #include <vector>
 #include <memory>
@@ -12,17 +11,20 @@
 
 class PointLight;
 
-class SoftwareOverviewRenderer : public IRenderer {
+class SoftwareOverviewRenderer : public SoftwareRendererBase {
 public:
-    bool Initialize(DXDevice& device, uint32_t width, uint32_t height) override;
-    void OnResize(DXDevice& device, uint32_t width, uint32_t height) override;
     void Render(
-        DXDevice& device, 
-        Scene& scene,                
-        const Camera& camera, 
+        DXDevice& device,
+        Scene& scene,
+        const Camera& camera,
         SwapChainTarget& target) override;
 
     void SetObservedCamera(const Camera* cam) { m_observedCamera = cam; }
+
+protected:
+    // Not used (Render is overridden for line drawing), but required by base class.
+    Vec3 ShadePixel(uint32_t, uint32_t, uint32_t, uint32_t,
+                    const Camera&, Scene&) override { return Vec3(0, 0, 0); }
 
 private:
     uint32_t ColorToABGR(const Vec4& color) const;
@@ -36,9 +38,4 @@ private:
     void DrawFrustum(const Camera& cam, const Mat4& vp);
 
     const Camera* m_observedCamera = nullptr;
-
-    std::vector<uint32_t> m_pixelBuffer;
-    uint32_t m_bufWidth = 0;
-    uint32_t m_bufHeight = 0;
-    std::unique_ptr<FullscreenQuad> m_quad;
 };

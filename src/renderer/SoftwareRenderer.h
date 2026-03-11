@@ -1,26 +1,22 @@
 #pragma once
 
-#include "renderer/IRenderer.h"
-#include "renderer/FullscreenQuad.h"
+#include "renderer/SoftwareRendererBase.h"
 #include "math/MathTypes.h"
 #include <vector>
-#include <memory>
 #include <cstdint>
 #include "Object.h"
 #include "Scene.h"
 #include "Camera.h"
 #include "Lights.h"
-#include <random>
 #include "renderer/utils.h"
 
-class SoftwareRenderer : public IRenderer {
+class SoftwareRenderer : public SoftwareRendererBase {
 public:
     bool Initialize(DXDevice& device, uint32_t width, uint32_t height) override;
-    void OnResize(DXDevice& device, uint32_t width, uint32_t height) override;
-    void Render(DXDevice& device, Scene& scene,
-                const Camera& camera, SwapChainTarget& target) override;
-    void Invalidate() override { m_dirty = true; }
-    bool IsRenderComplete() const override { return m_renderComplete; }
+
+protected:
+    Vec3 ShadePixel(uint32_t px, uint32_t py, uint32_t w, uint32_t h,
+                    const Camera& camera, Scene& scene) override;
 
 private:
     Vec3 TraceRay(
@@ -32,16 +28,16 @@ private:
     WorldObject* FindClosestHit(const Ray3& ray, const Scene& scene, Vec3& outHitPoint, Vec3& outNormal) const;
 
     Vec3 TraceRay_orig(
-        Vec3& origin, 
-        Vec3& direction, 
+        Vec3& origin,
+        Vec3& direction,
         Scene& scene,
-        float screenU, 
+        float screenU,
         float screenV);
 
     bool IntersectSphere(
-        const Vec3& origin, 
+        const Vec3& origin,
         const Vec3& dir,
-        const SphereObject& sphere, 
+        const SphereObject& sphere,
         float& t) const;
 
     Vec3 ComputePhongLighting(const Vec3& hitPoint, const Vec3& normal,
@@ -50,17 +46,5 @@ private:
 
     bool CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples);
 
-    std::vector<uint32_t>           m_pixelBuffer;
-    uint32_t                        m_bufWidth = 0;
-    uint32_t                        m_bufHeight = 0;
-    std::unique_ptr<FullscreenQuad> m_quad;
-
-    int                             maxDepth;
-
-    // Progressive rendering state
-    std::vector<uint32_t>           m_pixelOrder;       // shuffled pixel indices
-    uint32_t                        m_nextPixelIdx = 0; // position in shuffled list
-    bool                            m_renderComplete = false;
-    bool                            m_dirty = true;     // starts dirty to trigger first render
-    std::mt19937                    m_rng{std::random_device{}()};
+    int maxDepth = 8;
 };

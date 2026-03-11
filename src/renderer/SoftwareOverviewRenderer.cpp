@@ -7,19 +7,6 @@
 
 static const float NEAR_CLIP_W = 0.001f;
 
-bool SoftwareOverviewRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t height) {
-    m_bufWidth = width;
-    m_bufHeight = height;
-    m_pixelBuffer.resize(width * height, 0xFF000000);
-
-    m_quad = std::make_unique<FullscreenQuad>();
-    return m_quad->Initialize(device, width, height);
-}
-
-void SoftwareOverviewRenderer::OnResize(DXDevice& device, uint32_t width, uint32_t height) {
-    (void)device; (void)width; (void)height;
-}
-
 // ---------------------------------------------------------------
 // Pixel helpers
 // ---------------------------------------------------------------
@@ -246,21 +233,16 @@ void SoftwareOverviewRenderer::DrawFrustum(const Camera& cam, const Mat4& vp) {
 // ---------------------------------------------------------------
 
 void SoftwareOverviewRenderer::Render(
-    DXDevice& device, 
+    DXDevice& device,
     Scene& scene,
-    const Camera& camera, 
-    SwapChainTarget& target) 
+    const Camera& camera,
+    SwapChainTarget& target)
 {
     uint32_t w = target.GetWidth();
     uint32_t h = target.GetHeight();
     if (w == 0 || h == 0) return;
 
-    if (w != m_bufWidth || h != m_bufHeight) {
-        m_bufWidth = w;
-        m_bufHeight = h;
-        m_pixelBuffer.resize(w * h);
-        m_quad->Resize(device, w, h);
-    }
+    EnsureBufferSize(device, w, h);
 
     // Clear to dark background
     uint32_t clearCol = ColorToABGR({0.05f, 0.05f, 0.08f, 1.0f});
@@ -268,11 +250,9 @@ void SoftwareOverviewRenderer::Render(
 
     WorldObject& sphereObj = *scene.GetObjects()[0];
     const SphereObject& sphere = dynamic_cast<SphereObject&>(sphereObj);
-    const Material& mat = sphere.GetMaterial();
 
     Light* l = scene.GetLights()[0];
     PointLight& light = dynamic_cast<PointLight&>(*l);
-
 
     Mat4 vp = camera.GetViewProjection();
 
@@ -283,11 +263,5 @@ void SoftwareOverviewRenderer::Render(
         DrawFrustum(*m_observedCamera, vp);
     }
 
-    // Upload pixel buffer and display via fullscreen quad
-    m_quad->Upload(device, m_pixelBuffer.data(), w, h);
-
-    float clear[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-    target.Bind(device);
-    target.Clear(device, clear);
-    m_quad->Draw(device);
+    UploadAndDraw(device, target);
 }
