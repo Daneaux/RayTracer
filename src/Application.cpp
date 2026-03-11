@@ -186,6 +186,24 @@ void Application::Tick() {
     }
     m_camera1->ApplyKeyboard(&m_input1, m_deltaTime);
     m_camera1->ApplyMouseWheel(&m_input1);
+
+    // Detect camera movement and invalidate progressive render
+    {
+        bool cameraMoved = false;
+        if (m_input1.IsCaptured()) {
+            if (m_input1.GetMouseDeltaX() != 0 || m_input1.GetMouseDeltaY() != 0)
+                cameraMoved = true;
+        }
+        if (m_input1.IsKeyDown('W') || m_input1.IsKeyDown('S') ||
+            m_input1.IsKeyDown('A') || m_input1.IsKeyDown('D') ||
+            m_input1.IsKeyDown(VK_SPACE) || m_input1.IsKeyDown(VK_SHIFT))
+            cameraMoved = true;
+        if (m_input1.GetMouseWheelDelta() != 0)
+            cameraMoved = true;
+        if (cameraMoved)
+            m_renderer->Invalidate();
+    }
+
     m_input1.ResetFrameDeltas();
 
     if (m_input2.IsCaptured()) {

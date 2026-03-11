@@ -19,6 +19,8 @@ public:
     void OnResize(DXDevice& device, uint32_t width, uint32_t height) override;
     void Render(DXDevice& device, Scene& scene,
                 const Camera& camera, SwapChainTarget& target) override;
+    void Invalidate() override { m_dirty = true; }
+    bool IsRenderComplete() const override { return m_renderComplete; }
 
 private:
     Vec3 TraceRay(
@@ -54,4 +56,11 @@ private:
     std::unique_ptr<FullscreenQuad> m_quad;
 
     int                             maxDepth;
+
+    // Progressive rendering state
+    std::vector<uint32_t>           m_pixelOrder;       // shuffled pixel indices
+    uint32_t                        m_nextPixelIdx = 0; // position in shuffled list
+    bool                            m_renderComplete = false;
+    bool                            m_dirty = true;     // starts dirty to trigger first render
+    std::mt19937                    m_rng{std::random_device{}()};
 };

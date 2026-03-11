@@ -22,10 +22,10 @@ bool SoftwareRenderer::Initialize(DXDevice& device, uint32_t width, uint32_t hei
 }
 
 void SoftwareRenderer::OnResize(DXDevice& device, uint32_t width, uint32_t height) {
-    // Buffer will be resized in Render if target dimensions differ
     (void)device;
     (void)width;
     (void)height;
+    m_dirty = true;
 }
 
 void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
@@ -35,41 +35,46 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
 
     if (w == 0 || h == 0) return;
 
+    // Handle resize
     if (w != m_bufWidth || h != m_bufHeight) {
         m_bufWidth = w;
         m_bufHeight = h;
         m_pixelBuffer.resize(w * h);
         m_quad->Resize(device, w, h);
+        m_dirty = true;
     }
 
-    Material air;
-    air.baseColor = Vec3(0, 0, 0);
-    air.ior = 1.0;
-    // todo: other params and move to initializer
+    uint32_t totalPixels = w * h;
 
-    for (uint32_t py = 0; py < h; ++py) {
-        for (uint32_t px = 0; px < w; ++px) {
-            // ============================================================
-            // INNER LOOP: This runs once per pixel (px, py).
-            // To paint a pixel, write an ABGR uint32_t to:
-            //     m_pixelBuffer[py * w + px]
-            // Format: (A << 24) | (B << 16) | (G << 8) | R
-            //
-            // --- SAMPLE: paint a pixel directly ---
-            // Example 1: Solid red pixel
-            //   m_pixelBuffer[py * w + px] = 0xFF0000FF; // A=FF B=00 G=00 R=FF
-            //
-            // Example 2: XOR checkerboard pattern
-            //   uint8_t xor_val = (uint8_t)((px ^ py) & 0xFF);
-            //   m_pixelBuffer[py * w + px] = (255u << 24) | (xor_val << 16) | (xor_val << 8) | xor_val;
-            //
-            // Example 3: Animated concentric circles (using a frame counter)
-            //   float cx = (float)px - w * 0.5f;
-            //   float cy = (float)py - h * 0.5f;
-            //   float dist = std::sqrt(cx * cx + cy * cy);
-            //   uint8_t ring = (uint8_t)((int)(dist * 0.1f) & 1 ? 255 : 0);
-            //   m_pixelBuffer[py * w + px] = (255u << 24) | (ring << 8); // green rings
-            // ============================================================
+    // Restart progressive render when invalidated
+    if (m_dirty) {
+        std::fill(m_pixelBuffer.begin(), m_pixelBuffer.end(), 0xFF000000); // opaque black
+
+        // Build shuffled pixel order
+        m_pixelOrder.resize(totalPixels);
+        for (uint32_t i = 0; i < totalPixels; ++i)
+            m_pixelOrder[i] = i;
+        std::shuffle(m_pixelOrder.begin(), m_pixelOrder.end(), m_rng);
+
+        m_nextPixelIdx = 0;
+        m_renderComplete = false;
+        m_dirty = false;
+    }
+
+    // Trace a batch of pixels if not yet complete
+    if (!m_renderComplete) {
+        Material air;
+        air.baseColor = Vec3(0, 0, 0);
+        air.ior = 1.0;
+
+        // ~10 seconds at 60 fps → 600 frames total
+        uint32_t pixelsPerFrame = std::max(1u, totalPixels / 600u);
+        uint32_t endIdx = std::min(m_nextPixelIdx + pixelsPerFrame, totalPixels);
+
+        for (uint32_t i = m_nextPixelIdx; i < endIdx; ++i) {
+            uint32_t pixelIndex = m_pixelOrder[i];
+            uint32_t px = pixelIndex % w;
+            uint32_t py = pixelIndex / w;
 
             float ndcX = (2.0f * (px + 0.5f) / w) - 1.0f;
             float ndcY = 1.0f - (2.0f * (py + 0.5f) / h);
@@ -77,9 +82,6 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
             Vec3 origin, direction;
             camera.GenerateRay(ndcX, ndcY, origin, direction);
 
-            float screenU = (float)px / (float)w;
-            float screenV = (float)py / (float)h;
-   
             Vec3 color = TraceRay(Ray3(origin, direction), scene, air, maxDepth);
 
             uint8_t r = (uint8_t)(std::clamp(color.x, 0.0f, 1.0f) * 255.0f);
@@ -87,8 +89,13 @@ void SoftwareRenderer::Render(DXDevice& device, Scene& scene,
             uint8_t b = (uint8_t)(std::clamp(color.z, 0.0f, 1.0f) * 255.0f);
             m_pixelBuffer[py * w + px] = (255u << 24) | (b << 16) | (g << 8) | r;
         }
+
+        m_nextPixelIdx = endIdx;
+        if (m_nextPixelIdx >= totalPixels)
+            m_renderComplete = true;
     }
 
+    // Always upload and draw so the swap chain stays valid
     m_quad->Upload(device, m_pixelBuffer.data(), w, h);
 
     float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};

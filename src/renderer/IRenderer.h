@@ -13,8 +13,14 @@ public:
     virtual bool Initialize(DXDevice& device, uint32_t width, uint32_t height) = 0;
     virtual void OnResize(DXDevice& device, uint32_t width, uint32_t height) = 0;
     virtual void Render(
-        DXDevice& device, 
+        DXDevice& device,
         Scene& scene,
         const Camera& camera,
         SwapChainTarget& target) = 0;
+
+    // Mark the current render as stale (e.g. camera moved). Next Render() restarts.
+    virtual void Invalidate() {}
+
+    // True when progressive rendering has finished all pixels.
+    virtual bool IsRenderComplete() const { return true; }
 };
