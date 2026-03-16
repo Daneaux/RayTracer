@@ -84,10 +84,10 @@ void Application::SetupScene()
     Material redMat;
     redMat.baseColor = { 1.0f, 0.0f, 0.0f };
     redMat.roughness = 0.0f;
-    redMat.ior = 1.0f;
+    redMat.ior = 1.5f;
     redMat.transmission = 0.0f;
-    WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Identity(), redMat);
-    //m_scene->AddObject(sphereObj);
+    WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Translation({ -1.0f, -1.0f, 0.0f }), redMat);
+    m_scene->AddObject(sphereObj);
 
     // Add debug spheres with different materials
     // Sphere 1: Mirror-like (roughness=0, ior not used for metals)
@@ -108,7 +108,7 @@ void Application::SetupScene()
     glassMat.ior = 1.3;
     glassMat.transmission = 1.0f;
     glassMat.metallic = 0.0f;
-    WorldObject* glassSphere = new SphereObject(1.5f, Mat4::Translation({ 1.0f, -1.0f, 0.0f }), glassMat);
+    WorldObject* glassSphere = new SphereObject(1.5f, Mat4::Translation({ 2.0f, -3.0f, 0.0f }), glassMat);
     m_scene->AddObject(glassSphere);
 
     // Sphere 3: Rough diffuse (high roughness)

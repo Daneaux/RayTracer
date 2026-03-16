@@ -47,8 +47,6 @@ Vec3 BlinnPhongWithLightAttenuation(LightHitDirTuple& tuple, Vec3& hitNormal, Ve
 
 Vec3 BlinnPhong(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat)
 {
-    //hitNormal = hitNormal.Normalized();
-    //viewDir = viewDir.Normalized();
 
     Light& light = tuple.light;
     Vec3& hitDir = tuple.surfaceToLightNormalized;
@@ -60,7 +58,8 @@ Vec3 BlinnPhong(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Materia
     float specularFactor = std::pow(std::max(Vec3::Dot(hitNormal, halfVec), 0.0f), specularPower);
     specularFactor = std::max(0.0f, specularFactor);
 
-    Vec3 color = light.intensity * (diffuseFactor * light.color * mat.baseColor + specularFactor * light.color);
+    float specularStrength = 1.0f - mat.roughness;
+    Vec3 color = light.intensity * (diffuseFactor * light.color * mat.baseColor + specularStrength * specularFactor * light.color);
     return color;
 }
 

@@ -98,13 +98,13 @@ Vec3 SoftwareRenderer::TraceRay(
         // todo: ray length in sphere modulated by material light loss later.
         //assert(&currentMaterial == &mat);
         // todo: we're assuming exiting any object goes outside into the air with IOR = 1.0
-        FresnelSchlick(ray.direction.Normalized(), -normalA, n1, 1.0f, kr, kt);
+        FresnelSchlick_v2(ray.direction.Normalized(), -normalA, n1, 1.0f, kr, kt);
         // no reflection (yet) inside a sphere
         assert(alpha > 0.0f); // why would be inside a sphere if alpha is zero?
         if (kt > 0.0f && alpha > 0.0f)
         {
             Vec3 refractRay;
-            bool isRefraction = RefractRay(ray.direction, normalA, n1, n2, refractRay);
+            bool isRefraction = RefractRay(ray.direction, -normalA, n1, 1.0f, refractRay);
             if (isRefraction)
             {
                 Vec3 rayOrigin = outHit + normalA * 0.001f; // move new origin outside of sphere slightly
@@ -114,15 +114,19 @@ Vec3 SoftwareRenderer::TraceRay(
     }
     else
     {
-        if (!isLit)
-        {
-            int x = 4;
-        }
+        FresnelSchlick_v2(ray.direction.Normalized(), normalA, n1, n2, kr, kt);
 
-        FresnelSchlick(ray.direction.Normalized(), normalA, n1, n2, kr, kt);
-        Vec3 reflectedRay = ReflectRay(ray.direction, normalA);
-        Vec3 rayOrigin = outHit + normalA * 0.001f;
-        colorKr = kr * TraceRay(Ray3(rayOrigin, reflectedRay), scene, mat, currentDepth - 1);
+        float specular = 1.0f - mat.roughness;
+        // For transparent surfaces, Fresnel kr splits reflected vs refracted energy.
+        // For opaque surfaces, use specular (1-roughness) as the reflection coefficient.
+        float reflectScale = (alpha > 0.0f) ? kr : specular;
+
+        if (reflectScale > 0.0f)
+        {
+            Vec3 reflectedRay = ReflectRay(ray.direction, normalA);
+            Vec3 rayOrigin = outHit + normalA * 0.001f;
+            colorKr = reflectScale * TraceRay(Ray3(rayOrigin, reflectedRay), scene, currentMaterial, currentDepth - 1);
+        }
 
         if (kt > 0.0f && alpha > 0.0f)
         {
@@ -139,39 +143,13 @@ Vec3 SoftwareRenderer::TraceRay(
 
     bool version1 = false;
     Vec3 finalColor = { 0, 0, 0 };
-    if (version1)
-    {
-        if (isLit)
-            //finalColor += shadeComponents.specular;
 
-        if (alpha > 0.0f)
-            finalColor += colorKt * alpha;
+    float specular = 1.0f - mat.roughness;
 
-        if (alpha < 1.0f && isLit)
-            //finalColor += shadeComponents.diffuse * (1.0f - alpha);
-
-        finalColor += colorKr;
-    }
-    else {
-        float specular = 1.0f - mat.roughness;
-
-        if (specular > 0.0f && mat.transmission > 0.0f)
-        {
-            // reflect and refract
-            finalColor += colorKt * alpha;
-            finalColor += colorKr * specular;
-        }
-        else if (specular > 0.0f)
-        {
-            // reflect only
-            finalColor += colorKr * specular;// +diffuseLIghting / specular;
-        }
-        else
-        {
-            finalColor += colorKr + diffuseLIghting + mat.emissive;
-        }
-
-    }
+    // colorKr already has reflectScale (specular or Fresnel kr) baked in,
+    // so don't multiply by specular again here.
+    // Diffuse is scaled by (1 - specular) for energy conservation.
+    finalColor = diffuseLIghting * (1.0f - specular) + colorKr + colorKt * alpha + mat.emissive;
 
     bool clamp = false;
     if (clamp)
@@ -222,20 +200,26 @@ bool SoftwareRenderer::IsAnyHit(
     Vec3 &occluderHitPoint,
     WorldObject** occluder)
 {
+    bool found = false;
+    float closestT = std::numeric_limits<float>::max();
+
     for (auto* obj : scene.GetObjects()) {
-        if (obj == objectToSkip)        
+        if (obj == objectToSkip)
             continue;
 
         float t;
         Vec3 hitPointA, normalA, hitPointB, normalB;
         if (obj->IsHitByRay(ray, hitPointA, t, normalA, hitPointB, normalB)) {
             assert(t > 0.0f);
-            occluderHitPoint = hitPointA;
-            *occluder = obj;
-            return true;
+            if (t < closestT) {
+                closestT = t;
+                occluderHitPoint = hitPointA;
+                *occluder = obj;
+                found = true;
+            }
         }
     }
-    return false;
+    return found;
 }
 
 // casts rays from hit point to all lights to determine if in shadow and how much light contributes.

@@ -84,9 +84,9 @@ bool RefractRay(
 // 0.0 = fully refracted (perfectly transparent), 1.0 = fully reflected (perfect mirror).
 // In practice, the actual reflected color would be the incoming ray color multiplied by outReflectance, 
 // and the refracted color would be the incoming ray color multiplied by (1.0f - outReflectance).
-void  FresnelSchlick_v2(
-    Vec3& incomingRayNormalized,
-    Vec3& normalNormalized,
+void FresnelSchlick_v2(
+    const Vec3& incomingRay,
+    const Vec3& normal,
     float n1, float n2,
     float& outReflectance,
     float& outTransmittance);
