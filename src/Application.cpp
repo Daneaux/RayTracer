@@ -78,48 +78,54 @@ void Application::SetupScene()
 {
 	m_scene = std::make_unique<Scene>();
 
+    m_scene->SetAmbientColor(Vec3(0.0f, 0.1f, 1.0f));
+
     // Add a sphere
     Material redMat;
-    redMat.baseColor = { 1.0f, 1.0f, 0.0f };
-    redMat.roughness = 0.1f;
-    redMat.ior = 1.5;
-    redMat.transmission = 0.75;
+    redMat.baseColor = { 1.0f, 0.0f, 0.0f };
+    redMat.roughness = 0.0f;
+    redMat.ior = 1.0f;
+    redMat.transmission = 0.0f;
     WorldObject* sphereObj = new SphereObject(1.0f, Mat4::Identity(), redMat);
-    m_scene->AddObject(sphereObj);
+    //m_scene->AddObject(sphereObj);
 
     // Add debug spheres with different materials
     // Sphere 1: Mirror-like (roughness=0, ior not used for metals)
     Material mirrorMat;
     mirrorMat.baseColor = { 1.0f, 1.0f, 1.0f };
-    mirrorMat.roughness = 0.0f;
+    mirrorMat.roughness = 1.0f;
     mirrorMat.metallic = 1.0f;
     mirrorMat.ior = 1.5;
     mirrorMat.transmission = 0.0f;
     WorldObject* mirrorSphere = new SphereObject(0.8f, Mat4::Translation({ -2.5f, -2.2f, 0.0f }), mirrorMat);
-    m_scene->AddObject(mirrorSphere);
+    //m_scene->AddObject(mirrorSphere);
 
     // Sphere 2: mirror-like (roughness=0)  bottom left in scene.
     Material glassMat;
     glassMat.baseColor = { 1.0f, 1.0f, 1.0f };
+    //glassMat.baseColor = { 0.0f, 0.0f, 0.0f };
     glassMat.roughness = 0.0f;
-    glassMat.ior = 1.5;
+    glassMat.ior = 1.3;
     glassMat.transmission = 1.0f;
-    glassMat.metallic = 1.0f;
-    WorldObject* glassSphere = new SphereObject(1.2f, Mat4::Translation({ 2.5f, -3.0f, 0.0f }), glassMat);
+    glassMat.metallic = 0.0f;
+    WorldObject* glassSphere = new SphereObject(1.5f, Mat4::Translation({ 1.0f, -1.0f, 0.0f }), glassMat);
     m_scene->AddObject(glassSphere);
 
     // Sphere 3: Rough diffuse (high roughness)
     Material roughMat;
     roughMat.baseColor = { 0.8f, 0.2f, 0.2f };
-    roughMat.roughness = 0.8f;
+    roughMat.roughness = 0.0f;
     roughMat.ior = 1.5f;
-    roughMat.transmission = 0.25f;
+    roughMat.transmission = 1.0f;
     WorldObject* roughSphere = new SphereObject(0.8f, Mat4::Translation({ 0.0f, -2.2f, 2.5f }), roughMat);
-    m_scene->AddObject(roughSphere);
+    //m_scene->AddObject(roughSphere);
 
     // Add a light
-    Light* light = new PointLight({ 2.5f, 2.5f, -3.0f }, { 1.0f, 1.0f, 1.0f }, 5.0f);
+    Light* light = new PointLight({ 2.5f, 2.5f, -3.0f }, { 1.0f, 1.0f, 1.0f }, 0.5f);
     m_scene->AddLight(light);
+
+    Light* light2 = new PointLight({ -2.0f, 2.0f, -3.0f }, { 0.1f, 1.0f, 0.1f }, 0.5f);
+    m_scene->AddLight(light2);
 
     const float PI = 3.14159265f;
     const float boxDist = 4.0f;
@@ -128,48 +134,53 @@ void Application::SetupScene()
     // Floor (Y=-3, normal faces up)
     Material floorMat;
     floorMat.baseColor = { 0.2f, 0.8f, 0.2f }; // green
-    floorMat.roughness = 0.0f;
+    floorMat.roughness = 1.0f;
     floorMat.ior = 1.0f;
-    QuadObject* floorQuad = new QuadObject(quadSize, quadSize,
-        Mat4::RotationX(-PI * 0.5f) * Mat4::Translation({ 0, -boxDist, 0 }), floorMat);
+    floorMat.transmission = 0.0;
+    //floorMat.emissive = Vec3(0.05f, 0.05f, 0.05f);
+    QuadObject* floorQuad = new QuadObject(quadSize, quadSize, Mat4::RotationX(-PI * 0.5f) * Mat4::Translation({ 0, -boxDist, 0 }), floorMat);
     floorQuad->useCheckeredPattern = true;
     floorQuad->checkerColor1 = { 0.0f, 0.0f, 1.0f };
     floorQuad->checkerColor2 = { 1.0f, 0.0f, 0.0f };
-    floorQuad->checkerScale = 0.5f;
+    floorQuad->checkerScale = 0.75f;
     m_scene->AddObject(floorQuad);
 
     // Back wall (Z=+3, normal faces -Z toward camera)
     Material backMat;
     backMat.baseColor = { 0.8f, 0.2f, 0.2f }; // red
-    backMat.roughness = 0.0f;
+    backMat.roughness = 1.0f;
     backMat.ior = 1.0f;
     backMat.transmission = 0.0;
-    m_scene->AddObject(new QuadObject(quadSize, quadSize,
-        Mat4::RotationY(PI) * Mat4::Translation({ 0, 0, boxDist }), backMat));
+    m_scene->AddObject(new QuadObject(quadSize, quadSize, Mat4::RotationY(PI) * Mat4::Translation({ 0, 0, boxDist }), backMat));
 
     // Left wall (X=-3, normal faces +X)
     Material leftMat;
     leftMat.baseColor = { 0.2f, 0.2f, 0.8f }; // blue
-    leftMat.roughness = 0.0f;
+    leftMat.roughness = 1.0f;
     leftMat.ior = 1.0f;
-    m_scene->AddObject(new QuadObject(quadSize, quadSize,
-        Mat4::RotationY(PI * 0.5f) * Mat4::Translation({ -boxDist, 0, 0 }), leftMat));
+    leftMat.transmission = 0.0;
+    m_scene->AddObject(new QuadObject(quadSize, quadSize, Mat4::RotationY(PI * 0.5f) * Mat4::Translation({ -boxDist, 0, 0 }), leftMat));
 
     // Right wall (X=+3, normal faces -X)
     Material rightMat;
     rightMat.baseColor = { 0.8f, 0.8f, 0.2f }; // yellow
-    rightMat.roughness = 0.0f;
+    rightMat.roughness = 1.0f;
     rightMat.ior = 1.0f;
-    m_scene->AddObject(new QuadObject(quadSize, quadSize,
-        Mat4::RotationY(-PI * 0.5f) * Mat4::Translation({ boxDist, 0, 0 }), rightMat));
+    rightMat.transmission = 0.0;
+    m_scene->AddObject(new QuadObject(quadSize, quadSize, Mat4::RotationY(-PI * 0.5f) * Mat4::Translation({ boxDist, 0, 0 }), rightMat));
 
     // Ceiling (Y=+3, normal faces -Y down)
     Material ceilMat;
     ceilMat.baseColor = { 0.8f, 0.2f, 0.8f }; // magenta
-    ceilMat.roughness = 0.0f;
+    ceilMat.roughness = 1.0f;
     ceilMat.ior = 1.0f;
-    m_scene->AddObject(new QuadObject(quadSize, quadSize,
-        Mat4::RotationX(PI * 0.5f) * Mat4::Translation({ 0, boxDist, 0 }), ceilMat));
+    ceilMat.transmission = 0.0;
+    QuadObject *ceilingQuad = new QuadObject(quadSize, quadSize, Mat4::RotationX(PI * 0.5f) * Mat4::Translation({ 0, boxDist, 0 }), ceilMat);
+    ceilingQuad->useCheckeredPattern = true;
+    ceilingQuad->checkerColor1 = { 0.0f, 1.0f, 1.0f };
+    ceilingQuad->checkerColor2 = { 1.0f, 1.0f, 0.0f };
+    ceilingQuad->checkerScale = 0.75f;
+    m_scene->AddObject(ceilingQuad);
 }
 
 void Application::Tick() {

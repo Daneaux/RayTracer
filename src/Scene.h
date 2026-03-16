@@ -24,6 +24,7 @@ public:
     const std::vector<WorldObject*>& GetObjects() const { return objects; }
     const std::vector<Light*>& GetLights() const { return lights; }
     const Vec3& GetAmbientColor() const { return ambientColor; }
+    void SetAmbientColor(Vec3 c) { ambientColor = c; }
 
 private:
     std::vector<WorldObject*> objects;

@@ -74,22 +74,24 @@ Vec3 ReflectRay(const Vec3& incident, const Vec3& normal);
 // refractedDir: Output normalized refracted ray direction
 // Returns: true if refraction occurred, false if Total Internal Reflection (TIR)
 bool RefractRay(
-    const Vec3& incident,
+    const Vec3& incident_,
     const Vec3& normal,
-    double n_outside,
-    double n_inside,
+    float n_outside,
+    float n_inside,
     Vec3& refractedDir);
 
 // At this angle, outReflectance means:
 // 0.0 = fully refracted (perfectly transparent), 1.0 = fully reflected (perfect mirror).
 // In practice, the actual reflected color would be the incoming ray color multiplied by outReflectance, 
 // and the refracted color would be the incoming ray color multiplied by (1.0f - outReflectance).
-void  FresnelSchlick(
+void  FresnelSchlick_v2(
     Vec3& incomingRayNormalized,
     Vec3& normalNormalized,
     float n1, float n2,
     float& outReflectance,
     float& outTransmittance);
+
+void FresnelSchlick(const Vec3& incident, const Vec3& normal, float n1, float n2, float& R, float& T);
 
 Vec3 align_to_normal(const Vec3& local_dir, const Vec3& normal);
 Vec3 sample_ggx_direction(Vec3 normal, Vec3 view_dir, float roughness);
@@ -97,11 +99,11 @@ Vec3 sample_cosine_hemisphere(const Vec3& normal);
 Vec3 sample_pbr_direction(const Material& m, Vec3 normal, Vec3 view_dir);
 
 float power_heuristic(float pdf_f, float pdf_g);
-float schlick_reflectance(float cosine, float ref_idx);
 
 LightSample sample_point_light(Vec3 hit_point, const PointLight& light);
 
 Vec3 LambertShadingModel(LightHitDirTuple& tuple, Vec3& normalA, WorldObject* obj);
+Vec3 BlinnPhong(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat);
 Vec3 BlinnPhongWithLightAttenuation(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat);
 ShadingComponents BlinnPhongSeparated(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat);
 

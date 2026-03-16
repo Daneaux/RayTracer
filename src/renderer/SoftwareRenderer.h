@@ -25,7 +25,18 @@ private:
         Material& currentMaterial,
         int currentDepth);
 
-    WorldObject* FindClosestHit(const Ray3& ray, const Scene& scene, Vec3& outHitPoint, Vec3& outNormal) const;
+    WorldObject* FindClosestHit(
+        const Ray3& ray, 
+        const Scene& scene, 
+        Vec3& outHitPoint, 
+        Vec3& outNormal) const;
+
+    bool IsAnyHit(
+        WorldObject* objectToSkip, 
+        const Ray3& ray, 
+        const Scene& scene,
+        Vec3& occluderHitPoint, 
+        WorldObject** occluder);
 
     Vec3 TraceRay_orig(
         Vec3& origin,
@@ -44,7 +55,7 @@ private:
                               const Vec3& viewDir, const SphereObject& sphere,
                               const PointLight& light, const Vec3& ambient) const;
 
-    bool CastShadowRays(Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples);
+    bool CastShadowRays(WorldObject* lastHitObject, Vec3& origin, const Vec3& hitPoint, const Scene& scene, std::vector<LightHitDirTuple>& lightHitTuples);
 
     int maxDepth = 8;
 };

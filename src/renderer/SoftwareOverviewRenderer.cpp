@@ -248,8 +248,6 @@ void SoftwareOverviewRenderer::Render(
     uint32_t clearCol = ColorToABGR({0.05f, 0.05f, 0.08f, 1.0f});
     std::fill(m_pixelBuffer.begin(), m_pixelBuffer.end(), clearCol);
 
-    WorldObject& sphereObj = *scene.GetObjects()[0];
-    const SphereObject& sphere = dynamic_cast<SphereObject&>(sphereObj);
 
     Light* l = scene.GetLights()[0];
     PointLight& light = dynamic_cast<PointLight&>(*l);
@@ -257,7 +255,7 @@ void SoftwareOverviewRenderer::Render(
     Mat4 vp = camera.GetViewProjection();
 
     DrawGrid(vp);
-    DrawSphereWireframe(sphere, vp);
+   // DrawSphereWireframe(sphere, vp);
     DrawLightIndicator(light, vp);
     if (m_observedCamera) {
         DrawFrustum(*m_observedCamera, vp);

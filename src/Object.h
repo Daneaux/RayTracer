@@ -76,19 +76,29 @@ public:
 			float t1 = (-b - sqrtD) / (2.0f * a);
 			float t2 = (-b + sqrtD) / (2.0f * a);
 
-			// if one or both are behind ray origin, that means camera is inside the sphere or sphere behind camera.
+			// if one or both are behind ray origin, that means ray origin is inside the sphere or sphere behind ray origin.
+			if (t1 < 0.001f && t2 > 0.0001f)
+			{
+				// inside this object (sphere)
+				outT = t2;
+				Vec3 hitPointA = objectRay.origin + objectRay.direction * t2;
+				outA = worldTransform.Transform(Vec4(hitPointA, 1.0f)).ToVec3Drop();
+				Vec3 localNormalA = hitPointA.Normalized(); // normal points in
+				normalA = worldTransform.Transform(Vec4(localNormalA, 0.0f)).ToVec3Drop().Normalized();
+				return true;
+			}
 			if (t1 < 0.001f || t2 < 0.001f) return false;
 			if (t2 < t1) std::swap(t1, t2); // ensure t1 is closer hit
 
 			outT = t1; // return closer hit t
 
-			// Get intersection point in object space then xfrom to world space
+			// Get intersection point in object space then transform to world space
 			Vec3 hitPointA = objectRay.origin + objectRay.direction * t1;
 			Vec3 hitPointB = objectRay.origin + objectRay.direction * t2;
 			outA = worldTransform.Transform(Vec4(hitPointA, 1.0f)).ToVec3Drop();
 			outB = worldTransform.Transform(Vec4(hitPointB, 1.0f)).ToVec3Drop();
 
-			// Get normal to hit point in object space then xfrom to world space
+			// Get normal to hit point in object space then transofmr to world space
 			// since sphere is at origin, normal is just normalized hit point
 			Vec3 localNormalA = hitPointA.Normalized();
 			Vec3 localNormalB = hitPointB.Normalized();
@@ -152,7 +162,7 @@ public:
 		float t = -Vec3::Dot(planeNormal, objectRay.origin) / denominator;
 		if (t < 0.001f) return false; // plane is behind ray origin
 
-		// Get intersection point in object space then xfrom to world space
+		// Get intersection point in object space then transform to world space
 		Vec3 hitPoint = objectRay.origin + objectRay.direction * t;
 		if (std::fabs(hitPoint.x) > width * 0.5f || std::fabs(hitPoint.y) > height * 0.5f) return false; // hit point is outside quad bounds
 

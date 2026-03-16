@@ -45,6 +45,25 @@ Vec3 BlinnPhongWithLightAttenuation(LightHitDirTuple& tuple, Vec3& hitNormal, Ve
     return color;
 }
 
+Vec3 BlinnPhong(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat)
+{
+    //hitNormal = hitNormal.Normalized();
+    //viewDir = viewDir.Normalized();
+
+    Light& light = tuple.light;
+    Vec3& hitDir = tuple.surfaceToLightNormalized;
+    float diffuseFactor = Vec3::Dot(hitNormal, hitDir);
+    diffuseFactor = std::max(0.0f, diffuseFactor);
+
+    Vec3 halfVec = (hitDir + viewDir).Normalized();
+    float specularPower = std::pow(2.0f, 10.0f * (1.0f - mat.roughness));
+    float specularFactor = std::pow(std::max(Vec3::Dot(hitNormal, halfVec), 0.0f), specularPower);
+    specularFactor = std::max(0.0f, specularFactor);
+
+    Vec3 color = light.intensity * (diffuseFactor * light.color * mat.baseColor + specularFactor * light.color);
+    return color;
+}
+
 
 ShadingComponents BlinnPhongSeparated(LightHitDirTuple& tuple, Vec3& hitNormal, Vec3& viewDir, Material& mat)
 {
@@ -120,17 +139,18 @@ Vec3 ReflectRay(const Vec3& incident, const Vec3& normal) {
 // refractedDir: Output normalized refracted ray direction
 // Returns: true if refraction occurred, false if Total Internal Reflection (TIR)
 bool RefractRay(
-    const Vec3& incident,
+    const Vec3& incident_,
     const Vec3& normal,
-    double n_outside,
-    double n_inside,
-    Vec3& refractedDir) {
-
-    double n1 = n_outside;
-    double n2 = n_inside;
+    float n_outside,
+    float n_inside,
+    Vec3& refractedDir)
+{
+    Vec3 incident = incident_.Normalized();
+    float n1 = n_outside;
+    float n2 = n_inside;
     Vec3 n = normal;
 
-    double cosI = -Vec3::Dot(n, incident);
+    float cosI = -Vec3::Dot(n, incident);
 
     // Check if we are entering or leaving the medium
     if (cosI < 0) { // We are hitting the surface from the INSIDE
@@ -139,50 +159,68 @@ bool RefractRay(
         std::swap(n1, n2);
     }
 
-    double eta = n1 / n2;
-    double sinT2 = eta * eta * (1.0 - cosI * cosI);
+    float eta = n1 / n2;
+    float sinT2 = eta * eta * (1.0 - cosI * cosI);
 
     // Total Internal Reflection (TIR)
     if (sinT2 > 1.0) return false;
 
-    double cosT = std::sqrt(1.0 - sinT2);
+    float cosT = std::sqrt(1.0 - sinT2);
 
     // Vector form of Snell's Law
     refractedDir = (incident * eta + n * (eta * cosI - cosT)).Normalized();
     return true;
 }
 
-float schlick_reflectance(float cosine, float ref_idx)
+// v3 ?
+void FresnelSchlick(const Vec3& incident, const Vec3& normal, float n1, float n2, float& R, float& T)
 {
-    // Calculate R0 (the reflectance at normal incidence)
-    float r0 = (1 - ref_idx) / (1 + ref_idx);
-    r0 = r0 * r0; // R0 = ((n1 - n2) / (n1 + n2))^2
+    float cosTheta = Vec3::Dot(-incident, normal);
+    float r0 = (n1 - n2) / (n1 + n2);
+    r0 = r0 * r0;
 
-    // Apply Schlick's approximation formula
-    return r0 + (1.0f - r0) * std::pow((1.0f - cosine), 5);
+    // Schlick's approximation
+    R = r0 + (1.0f - r0) * std::pow(1.0f - cosTheta, 5.0f);
+
+    // Total internal reflection check
+    if (n1 > n2)
+    {
+        float sinT2 = (n1 / n2) * std::sqrt(std::max(0.0f, 1.0f - cosTheta * cosTheta));
+        if (sinT2 > 1.0f)
+        {
+            R = 1.0f;
+            T = 0.0f;
+            return;
+        }
+    }
+    T = 1.0f - R;
 }
 
 // At this angle, outReflectance means:
 // 0.0 = fully refracted (perfectly transparent), 1.0 = fully reflected (perfect mirror).
 // In practice, the actual reflected color would be the incoming ray color multiplied by outReflectance, 
 // and the refracted color would be the incoming ray color multiplied by (1.0f - outReflectance).
-void  FresnelSchlick(
+void  FresnelSchlick_v1(
     Vec3& incomingRayNormalized,
     Vec3& normalNormalized,
     float n1, float n2,
     float& outReflectance,
     float& outTransmittance)
 {
-    float refractionRatio = n1 / n2;
     // 1. Calculate the cosine of the angle of incidence
     float cos_theta = std::fmin(Vec3::Dot(-incomingRayNormalized, normalNormalized), 1.0);
 
     // 2. Determine the ratio (reflectance)
-    outReflectance = schlick_reflectance(cos_theta, refractionRatio);
+
+    // R0 = ((n1 - n2) / (n1 + n2))^2
+    float r0 = (n1 - n2) / (n1 + n2);
+    r0 = r0 * r0;
+
+    outReflectance = r0 + (1.0f - r0) * std::pow((1.0f - cos_theta), 5);
     outTransmittance = 1.0f - outReflectance;
 }
 
-void FresnelSchlick(
+void FresnelSchlick_v2(
     const Vec3& incomingRay,
     const Vec3& normal,
     float n1, float n2,
